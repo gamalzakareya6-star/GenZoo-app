@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "971349959914",
+    "project_id": "genzoo-app",
+    "storage_bucket": "genzoo-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:971349959914:android:dba3251ab594cf447be393",
+        "android_client_info": {
+          "package_name": "com.gamal.genzoo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyItoPA7NaBYck4-tdTMWvIvj6TIe8eG0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
