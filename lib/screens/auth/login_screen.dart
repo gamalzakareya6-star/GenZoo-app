@@ -1,8 +1,8 @@
-import '../../widgets/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../widgets/animations.dart';
 import '../../providers/auth_provider.dart';
-import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../main_navigation_screen.dart';
@@ -16,12 +16,16 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+
   bool _isRegisterMode = false;
   bool _obscurePassword = true;
 
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController();
+  final TextEditingController _passwordController =
+      TextEditingController();
+  final TextEditingController _nameController =
+      TextEditingController();
 
   String _selectedYear = AppConstants.academicYears.first;
 
@@ -33,41 +37,70 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+      ),
+    );
+  }
+
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
-    final messenger = ScaffoldMessenger.of(context);
+
     if (email.isEmpty || !email.contains('@')) {
-      messenger.showSnackBar(const SnackBar(content: Text('اكتب بريدك الإلكتروني أولًا ثم اضغط «نسيت كلمة المرور»')));
+      _showMessage(
+        'اكتب بريدك الإلكتروني أولًا ثم اضغط نسيت كلمة المرور',
+        isError: true,
+      );
       return;
     }
-    final error = await Provider.of<UserAuthProvider>(context, listen: false).resetPassword(email);
-    messenger.showSnackBar(SnackBar(
-      content: Text(error ?? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى $email'),
-      backgroundColor: error == null ? Colors.green : Colors.redAccent,
-    ));
+
+    final auth = Provider.of<UserAuthProvider>(
+      context,
+      listen: false,
+    );
+
+    final error = await auth.resetPassword(email);
+
+    if (!mounted) return;
+
+    _showMessage(
+      error ?? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى $email',
+      isError: error != null,
+    );
   }
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final auth = Provider.of<UserAuthProvider>(context, listen: false);
+    final auth = Provider.of<UserAuthProvider>(
+      context,
+      listen: false,
+    );
 
     bool success;
+
     if (_isRegisterMode) {
       success = await auth.register(
-        email: _emailController.text,
+        email: _emailController.text.trim(),
         password: _passwordController.text,
-        displayName: _nameController.text,
+        displayName: _nameController.text.trim(),
         academicYear: _selectedYear,
       );
     } else {
       success = await auth.signIn(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
     }
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       Navigator.pushReplacement(
         context,
         AppRoute.fadeSlide(const MainNavigationScreen()),
@@ -75,9 +108,39 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final auth = Provider.of<UserAuthProvider>(
+      context,
+      listen: false,
+    );
+
+    auth.clearError();
+
+    final success = await auth.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacement(
+        context,
+        AppRoute.fadeSlide(const MainNavigationScreen()),
+      );
+    } else if (auth.errorMessage != null) {
+      _showMessage(
+        auth.errorMessage!,
+        isError: true,
+      );
+    }
+  }
+
   void _handleGuestEntry() {
-    final auth = Provider.of<UserAuthProvider>(context, listen: false);
+    final auth = Provider.of<UserAuthProvider>(
+      context,
+      listen: false,
+    );
+
     auth.loginAsGuest();
+
     Navigator.pushReplacement(
       context,
       AppRoute.fadeSlide(const MainNavigationScreen()),
@@ -93,20 +156,30 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Branding Header
                   Center(
-                    child: Floating(child: const AppLogo(size: 120, hero: true, glow: true)),
+                    child: Floating(
+                      child: const AppLogo(
+                        size: 120,
+                        hero: true,
+                        glow: true,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
+
                   Text(
-                    _isRegisterMode ? 'إنشاء حساب طالب' : 'مرحبًا بك في GenZoo',
+                    _isRegisterMode
+                        ? 'إنشاء حساب طالب'
+                        : 'مرحبًا بك في GenZoo',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -114,6 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
+
                   Text(
                     _isRegisterMode
                         ? 'انضم لمجتمع كليتك للمواد والإعلانات والأدوات'
@@ -123,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Mode Toggle Segment
+                  // Login and registration toggle
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
@@ -139,26 +213,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               auth.clearError();
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
-                                color: !_isRegisterMode ? Colors.white : Colors.transparent,
+                                color: !_isRegisterMode
+                                    ? Colors.white
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
-                                boxShadow: !_isRegisterMode
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ]
-                                    : null,
                               ),
                               child: Text(
                                 'تسجيل الدخول',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: !_isRegisterMode ? FontWeight.bold : FontWeight.w500,
-                                  color: !_isRegisterMode ? AppColors.primary : Colors.grey.shade700,
+                                  fontWeight: !_isRegisterMode
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: !_isRegisterMode
+                                      ? AppColors.primary
+                                      : Colors.grey.shade700,
                                 ),
                               ),
                             ),
@@ -171,26 +244,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               auth.clearError();
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
-                                color: _isRegisterMode ? Colors.white : Colors.transparent,
+                                color: _isRegisterMode
+                                    ? Colors.white
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
-                                boxShadow: _isRegisterMode
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ]
-                                    : null,
                               ),
                               child: Text(
                                 'حساب جديد',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontWeight: _isRegisterMode ? FontWeight.bold : FontWeight.w500,
-                                  color: _isRegisterMode ? AppColors.primary : Colors.grey.shade700,
+                                  fontWeight: _isRegisterMode
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _isRegisterMode
+                                      ? AppColors.primary
+                                      : Colors.grey.shade700,
                                 ),
                               ),
                             ),
@@ -201,23 +273,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Error Banner
+                  // Error message
                   if (auth.errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               auth.errorMessage!,
-                              style: const TextStyle(color: AppColors.error, fontSize: 13),
+                              style: const TextStyle(
+                                color: AppColors.error,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -226,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Auth Form
+                  // Email and password form
                   Form(
                     key: _formKey,
                     child: Column(
@@ -239,10 +320,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               labelText: 'الاسم الكامل',
                               prefixIcon: Icon(Icons.person_outline),
                             ),
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty) ? 'من فضلك أدخل اسمك' : null,
+                            validator: (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty) {
+                                return 'من فضلك أدخل اسمك';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 14),
+
                           DropdownButtonFormField<String>(
                             value: _selectedYear,
                             decoration: const InputDecoration(
@@ -250,10 +337,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: Icon(Icons.class_outlined),
                             ),
                             items: AppConstants.academicYears.map((year) {
-                              return DropdownMenuItem(value: year, child: Text(year));
+                              return DropdownMenuItem<String>(
+                                value: year,
+                                child: Text(year),
+                              );
                             }).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _selectedYear = val);
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _selectedYear = value);
+                              }
                             },
                           ),
                           const SizedBox(height: 14),
@@ -266,9 +358,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             labelText: 'البريد الإلكتروني',
                             prefixIcon: Icon(Icons.email_outlined),
                           ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'من فضلك أدخل بريدك الإلكتروني';
-                            if (!v.contains('@')) return 'أدخل بريدًا إلكترونيًا صحيحًا';
+                          validator: (value) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
+                              return 'من فضلك أدخل بريدك الإلكتروني';
+                            }
+                            if (!value.contains('@')) {
+                              return 'أدخل بريدًا إلكترونيًا صحيحًا';
+                            }
                             return null;
                           },
                         ),
@@ -282,46 +379,61 @@ class _LoginScreenState extends State<LoginScreen> {
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
                               onPressed: () {
-                                setState(() => _obscurePassword = !_obscurePassword);
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
                               },
                             ),
                           ),
-                          validator: (v) {
-                            if (v == null || v.length < 6) {
+                          validator: (value) {
+                            if (value == null || value.length < 6) {
                               return 'كلمة المرور يجب ألا تقل عن 6 أحرف';
                             }
                             return null;
                           },
                         ),
+
                         if (!_isRegisterMode)
                           Align(
                             alignment: AlignmentDirectional.centerEnd,
                             child: TextButton(
-                              onPressed: _handleForgotPassword,
+                              onPressed: auth.isLoading
+                                  ? null
+                                  : _handleForgotPassword,
                               child: const Text('نسيت كلمة المرور؟'),
                             ),
                           ),
 
                         const SizedBox(height: 16),
 
-                        // Submit Button
                         ElevatedButton(
-                          onPressed: auth.isLoading ? null : _handleSubmit,
+                          onPressed: auth.isLoading
+                              ? null
+                              : _handleSubmit,
                           child: auth.isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : Text(
-                                  _isRegisterMode ? 'إنشاء الحساب' : 'تسجيل الدخول',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  _isRegisterMode
+                                      ? 'إنشاء الحساب'
+                                      : 'تسجيل الدخول',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                         ),
                       ],
@@ -329,14 +441,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  // Divider
                   Row(
                     children: [
                       const Expanded(child: Divider()),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
                         child: Text(
-                          'OR',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                          'أو',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                       const Expanded(child: Divider()),
@@ -344,14 +463,44 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Guest Access Button
+                  // Google sign-in button (login mode only)
+                  if (!_isRegisterMode)
+                    OutlinedButton.icon(
+                      onPressed: auth.isLoading
+                          ? null
+                          : _handleGoogleSignIn,
+                      icon: const Icon(
+                        Icons.g_mobiledata,
+                        size: 30,
+                      ),
+                      label: const Text(
+                        'تسجيل الدخول باستخدام Google',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+
+                  if (!_isRegisterMode)
+                    const SizedBox(height: 12),
+
+                  // Guest access
                   OutlinedButton.icon(
-                    onPressed: _handleGuestEntry,
+                    onPressed: auth.isLoading
+                        ? null
+                        : _handleGuestEntry,
                     icon: const Icon(Icons.explore_outlined),
                     label: const Text('الدخول كزائر'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ],
