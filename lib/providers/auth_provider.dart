@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/user_model.dart';
 import '../core/services/auth_service.dart';
 
-class UserAuthProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
 
   AppUser? _user;
@@ -13,42 +14,79 @@ class UserAuthProvider extends ChangeNotifier {
   AppUser? get user => _user;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _user != null && _user!.role != UserRole.guest;
-  bool get isAdmin => _user?.isAdmin ?? false;
+  bool get isAuthenticated => _user != null;
 
-  UserAuthProvider() {
-    _init();
-  }
-
-  void _init() {
-    _authService.authStateChanges.listen((User? firebaseUser) async {
-      if (firebaseUser != null) {
-        _user = await _authService.getUserProfile(firebaseUser.uid);
-      } else {
-        if (_user?.role != UserRole.guest) {
-          _user = null;
-        }
+  AuthProvider() {
+    _authService.authStateChanges.listen((firebaseUser) async {
+      if (firebaseUser == null) {
+        _user = null;
+        notifyListeners();
+        return;
       }
+
+      _user = await _authService.getUserProfile(
+        firebaseUser.uid,
+      );
+
       notifyListeners();
     });
   }
 
-  Future<bool> signIn(String email, String password) async {
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? message) {
+    _errorMessage = message;
+    notifyListeners();
+  }
+
+  Future<bool> signIn(
+    String email,
+    String password,
+  ) async {
     _setLoading(true);
-    _errorMessage = null;
+    _setError(null);
 
     try {
-      _user = await _authService.signInWithEmailPassword(email, password);
-      _setLoading(false);
+      _user = await _authService.signInWithEmailPassword(
+        email,
+        password,
+      );
       return true;
     } on FirebaseAuthException catch (e) {
-      _errorMessage = _mapAuthError(e.code);
-      _setLoading(false);
+      _setError(e.message ?? 'فشل تسجيل الدخول');
       return false;
     } catch (e) {
-      _errorMessage = 'حدث خطأ غير متوقع. حاول مرة أخرى.';
-      _setLoading(false);
+      _setError('حدث خطأ أثناء تسجيل الدخول');
       return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final result = await _authService.signInWithGoogle();
+
+      if (result == null) {
+        return false;
+      }
+
+      _user = result;
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _setError(e.message ?? 'فشل تسجيل الدخول باستخدام Google');
+      return false;
+    } catch (e) {
+      _setError('تعذر تسجيل الدخول باستخدام Google');
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -59,7 +97,7 @@ class UserAuthProvider extends ChangeNotifier {
     required String academicYear,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
+    _setError(null);
 
     try {
       _user = await _authService.registerWithEmailPassword(
@@ -68,69 +106,58 @@ class UserAuthProvider extends ChangeNotifier {
         displayName: displayName,
         academicYear: academicYear,
       );
-      _setLoading(false);
       return true;
     } on FirebaseAuthException catch (e) {
-      _errorMessage = _mapAuthError(e.code);
-      _setLoading(false);
+      _setError(e.message ?? 'فشل إنشاء الحساب');
       return false;
     } catch (e) {
-      _errorMessage = 'فشل إنشاء الحساب. راجع بياناتك وحاول مرة أخرى.';
-      _setLoading(false);
+      _setError('حدث خطأ أثناء إنشاء الحساب');
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
-  /// Sends a reset link to [email]. Returns null on success, otherwise an Arabic error message.
-  Future<String?> resetPassword(String email) async {
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    _setError(null);
+
     try {
       await _authService.sendPasswordResetEmail(email);
-      return null;
+      return true;
     } on FirebaseAuthException catch (e) {
-      return _mapAuthError(e.code);
-    } catch (_) {
-      return 'تعذّر إرسال الرابط. حاول مرة أخرى.';
+      _setError(e.message ?? 'تعذر إرسال رابط استعادة كلمة المرور');
+      return false;
+    } catch (e) {
+      _setError('حدث خطأ أثناء استعادة كلمة المرور');
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
   void loginAsGuest() {
-    _user = AppUser.guestUser();
-    _errorMessage = null;
+    _user = null;
+    _setError(null);
     notifyListeners();
   }
 
   Future<void> signOut() async {
     _setLoading(true);
-    await _authService.signOut();
-    _user = null;
-    _setLoading(false);
-  }
 
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
-
-  void _setLoading(bool val) {
-    _isLoading = val;
-    notifyListeners();
-  }
-
-  String _mapAuthError(String code) {
-    switch (code) {
-      case 'user-not-found':
-        return 'لا يوجد حساب بهذا البريد الإلكتروني.';
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'كلمة المرور أو البيانات غير صحيحة.';
-      case 'email-already-in-use':
-        return 'هذا البريد الإلكتروني مسجّل بالفعل.';
-      case 'weak-password':
-        return 'كلمة المرور يجب ألا تقل عن 6 أحرف.';
-      case 'invalid-email':
-        return 'صيغة البريد الإلكتروني غير صحيحة.';
-      default:
-        return 'فشلت العملية: $code';
+    try {
+      await _authService.signOut();
+      _user = null;
+      _setError(null);
+    } catch (e) {
+      _setError('تعذر تسجيل الخروج');
+    } finally {
+      _setLoading(false);
     }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
