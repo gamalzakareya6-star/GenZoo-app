@@ -1,4 +1,6 @@
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -21,31 +23,68 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   Intl.defaultLocale = 'ar';
+
   await initializeDateFormatting('ar');
 
+  bool firebaseReady = false;
+
+  // Initialize Firebase before creating providers that depend on it.
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Register the background notification handler
-    // before the application starts.
     FirebaseMessaging.onBackgroundMessage(
       firebaseMessagingBackgroundHandler,
     );
 
-    // Configure notification permission and topic subscription.
-    await NotificationService.init();
+    firebaseReady = true;
+    debugPrint('GenZoo: Firebase initialized successfully.');
   } catch (e, stackTrace) {
-    debugPrint('Firebase initialization notice: $e');
+    debugPrint('GenZoo: Firebase initialization failed: $e');
     debugPrintStack(stackTrace: stackTrace);
   }
 
-  runApp(const GenZooStudentPortalApp());
+  // Start the application without waiting for notification
+  // permissions, topic subscriptions, or network requests.
+  runApp(
+    GenZooStudentPortalApp(
+      firebaseReady: firebaseReady,
+    ),
+  );
+
+  // Configure notifications after the first frame.
+  // A notification setup failure must not block the UI.
+  if (firebaseReady) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_initializeNotifications());
+    });
+  }
+}
+
+Future<void> _initializeNotifications() async {
+  try {
+    await NotificationService.init().timeout(
+      const Duration(seconds: 12),
+      onTimeout: () {
+        debugPrint(
+          'GenZoo: Notification initialization timed out.',
+        );
+      },
+    );
+  } catch (e, stackTrace) {
+    debugPrint('GenZoo: Notification setup failed: $e');
+    debugPrintStack(stackTrace: stackTrace);
+  }
 }
 
 class GenZooStudentPortalApp extends StatelessWidget {
-  const GenZooStudentPortalApp({super.key});
+  final bool firebaseReady;
+
+  const GenZooStudentPortalApp({
+    super.key,
+    this.firebaseReady = true,
+  });
 
   @override
   Widget build(BuildContext context) {
