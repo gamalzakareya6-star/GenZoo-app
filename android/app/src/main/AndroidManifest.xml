@@ -20,7 +20,7 @@
     </queries>
 
     <application
-        android:label="GenZoo Portal"
+        android:label="GenZoo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
