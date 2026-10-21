@@ -38,12 +38,19 @@ jobs:
         shell: bash
         run: |
           APK="build/app/outputs/flutter-apk/app-release.apk"
+
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+
           if [ -z "$APKSIGNER" ]; then
             echo "ERROR: apksigner was not found."
             exit 1
           fi
+
+          echo "========== APK SIGNING CERTIFICATE =========="
           "$APKSIGNER" verify --print-certs "$APK"
+
+          echo "========== KEYTOOL CERTIFICATE =========="
+          keytool -printcert -jarfile "$APK"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
