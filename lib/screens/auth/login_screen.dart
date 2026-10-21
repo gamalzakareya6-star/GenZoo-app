@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -43,7 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        backgroundColor:
+            isError ? Colors.redAccent : Colors.green,
       ),
     );
   }
@@ -103,7 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacement(
         context,
-        AppRoute.fadeSlide(const MainNavigationScreen()),
+        AppRoute.fadeSlide(
+          const MainNavigationScreen(),
+        ),
       );
     }
   }
@@ -123,7 +127,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacement(
         context,
-        AppRoute.fadeSlide(const MainNavigationScreen()),
+        AppRoute.fadeSlide(
+          const MainNavigationScreen(),
+        ),
       );
     } else if (auth.errorMessage != null) {
       _showMessage(
@@ -143,7 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.pushReplacement(
       context,
-      AppRoute.fadeSlide(const MainNavigationScreen()),
+      AppRoute.fadeSlide(
+        const MainNavigationScreen(),
+      ),
     );
   }
 
@@ -161,9 +169,12 @@ class _LoginScreenState extends State<LoginScreen> {
               vertical: 24,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(
+                maxWidth: 440,
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
                 children: [
                   Center(
                     child: Floating(
@@ -209,18 +220,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              setState(() => _isRegisterMode = false);
+                              setState(() {
+                                _isRegisterMode = false;
+                              });
                               auth.clearError();
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
+                              padding:
+                                  const EdgeInsets.symmetric(
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
                                 color: !_isRegisterMode
                                     ? Colors.white
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius:
+                                    BorderRadius.circular(10),
                               ),
                               child: Text(
                                 'تسجيل الدخول',
@@ -240,18 +255,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              setState(() => _isRegisterMode = true);
+                              setState(() {
+                                _isRegisterMode = true;
+                              });
                               auth.clearError();
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
+                              padding:
+                                  const EdgeInsets.symmetric(
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
                                 color: _isRegisterMode
                                     ? Colors.white
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius:
+                                    BorderRadius.circular(10),
                               ),
                               child: Text(
                                 'حساب جديد',
@@ -279,9 +298,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius:
+                            BorderRadius.circular(10),
                         border: Border.all(
-                          color: AppColors.error.withOpacity(0.3),
+                          color:
+                              AppColors.error.withOpacity(0.3),
                         ),
                       ),
                       child: Row(
@@ -311,14 +332,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   Form(
                     key: _formKey,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.stretch,
                       children: [
                         if (_isRegisterMode) ...[
                           TextFormField(
                             controller: _nameController,
-                            decoration: const InputDecoration(
+                            decoration:
+                                const InputDecoration(
                               labelText: 'الاسم الكامل',
-                              prefixIcon: Icon(Icons.person_outline),
+                              prefixIcon:
+                                  Icon(Icons.person_outline),
                             ),
                             validator: (value) {
                               if (value == null ||
@@ -332,11 +356,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           DropdownButtonFormField<String>(
                             value: _selectedYear,
-                            decoration: const InputDecoration(
+                            decoration:
+                                const InputDecoration(
                               labelText: 'الفرقة الدراسية',
-                              prefixIcon: Icon(Icons.class_outlined),
+                              prefixIcon:
+                                  Icon(Icons.class_outlined),
                             ),
-                            items: AppConstants.academicYears.map((year) {
+                            items: AppConstants.academicYears
+                                .map((year) {
                               return DropdownMenuItem<String>(
                                 value: year,
                                 child: Text(year),
@@ -344,7 +371,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             }).toList(),
                             onChanged: (value) {
                               if (value != null) {
-                                setState(() => _selectedYear = value);
+                                setState(() {
+                                  _selectedYear = value;
+                                });
                               }
                             },
                           ),
@@ -353,10 +382,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         TextFormField(
                           controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
+                          keyboardType:
+                              TextInputType.emailAddress,
+                          decoration:
+                              const InputDecoration(
                             labelText: 'البريد الإلكتروني',
-                            prefixIcon: Icon(Icons.email_outlined),
+                            prefixIcon:
+                                Icon(Icons.email_outlined),
                           ),
                           validator: (value) {
                             if (value == null ||
@@ -376,7 +408,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'كلمة المرور',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon:
+                                const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
@@ -385,13 +418,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _obscurePassword = !_obscurePassword;
+                                  _obscurePassword =
+                                      !_obscurePassword;
                                 });
                               },
                             ),
                           ),
                           validator: (value) {
-                            if (value == null || value.length < 6) {
+                            if (value == null ||
+                                value.length < 6) {
                               return 'كلمة المرور يجب ألا تقل عن 6 أحرف';
                             }
                             return null;
@@ -400,12 +435,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         if (!_isRegisterMode)
                           Align(
-                            alignment: AlignmentDirectional.centerEnd,
+                            alignment:
+                                AlignmentDirectional.centerEnd,
                             child: TextButton(
                               onPressed: auth.isLoading
                                   ? null
                                   : _handleForgotPassword,
-                              child: const Text('نسيت كلمة المرور؟'),
+                              child: const Text(
+                                'نسيت كلمة المرور؟',
+                              ),
                             ),
                           ),
 
@@ -419,10 +457,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(
+                                  child:
+                                      CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor:
-                                        AlwaysStoppedAnimation<Color>(
+                                        AlwaysStoppedAnimation<
+                                            Color>(
                                       Colors.white,
                                     ),
                                   ),
@@ -447,7 +487,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Expanded(child: Divider()),
                       Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding:
+                            const EdgeInsets.symmetric(
                           horizontal: 12,
                         ),
                         child: Text(
@@ -463,43 +504,51 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Google sign-in button (login mode only)
-                  if (!_isRegisterMode)
-                    OutlinedButton.icon(
-                      onPressed: auth.isLoading
-                          ? null
-                          : _handleGoogleSignIn,
-                      icon: const Icon(
-                        Icons.g_mobiledata,
-                        size: 30,
+                  // Google button in both modes
+                  OutlinedButton.icon(
+                    onPressed: auth.isLoading
+                        ? null
+                        : _handleGoogleSignIn,
+                    icon: const Icon(
+                      Icons.g_mobiledata,
+                      size: 30,
+                    ),
+                    label: Text(
+                      _isRegisterMode
+                          ? 'إنشاء حساب باستخدام Google'
+                          : 'تسجيل الدخول باستخدام Google',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        vertical: 14,
                       ),
-                      label: const Text(
-                        'تسجيل الدخول باستخدام Google',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(12),
                       ),
                     ),
+                  ),
 
-                  if (!_isRegisterMode)
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
                   // Guest access
                   OutlinedButton.icon(
                     onPressed: auth.isLoading
                         ? null
                         : _handleGuestEntry,
-                    icon: const Icon(Icons.explore_outlined),
+                    icon: const Icon(
+                      Icons.explore_outlined,
+                    ),
                     label: const Text('الدخول كزائر'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding:
+                          const EdgeInsets.symmetric(
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius:
+                            BorderRadius.circular(12),
                       ),
                     ),
                   ),
