@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'بوابة GenZoo الطلابية';
+  static const String appName = 'GenZoo';
   static const String appTagline = 'رفيقك الأكاديمي والروحي';
 
   // Firestore Collections
