@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -19,6 +20,9 @@ class UserAuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
+
+  // تحديد ما إذا كان المستخدم أدمن
+  bool get isAdmin => _user?.role == UserRole.admin;
 
   UserAuthProvider() {
     _authSubscription =
@@ -52,7 +56,7 @@ class UserAuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Email and password login
+  // تسجيل الدخول بالبريد الإلكتروني وكلمة المرور
   Future<bool> signIn(String email, String password) async {
     _setLoading(true);
     _setError(null);
@@ -62,6 +66,7 @@ class UserAuthProvider extends ChangeNotifier {
         email,
         password,
       );
+      notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(e.message ?? 'فشل تسجيل الدخول');
@@ -74,7 +79,7 @@ class UserAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Google login
+  // تسجيل الدخول بحساب Google
   Future<bool> signInWithGoogle() async {
     _setLoading(true);
     _setError(null);
@@ -83,7 +88,6 @@ class UserAuthProvider extends ChangeNotifier {
       final profile = await _authService.signInWithGoogle();
 
       if (profile == null) {
-        // The user cancelled Google sign-in.
         return false;
       }
 
@@ -105,7 +109,7 @@ class UserAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Register a new student
+  // إنشاء حساب طالب جديد
   Future<bool> register({
     required String email,
     required String password,
@@ -136,8 +140,8 @@ class UserAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Password reset
-  // Returns null on success, or an error message on failure.
+  // استعادة كلمة المرور
+  // ترجع null عند النجاح ورسالة خطأ عند الفشل
   Future<String?> resetPassword(String email) async {
     _setLoading(true);
     _setError(null);
@@ -146,8 +150,8 @@ class UserAuthProvider extends ChangeNotifier {
       await _authService.sendPasswordResetEmail(email);
       return null;
     } on FirebaseAuthException catch (e) {
-      final message = e.message ??
-          'تعذر إرسال رابط استعادة كلمة المرور';
+      final message =
+          e.message ?? 'تعذر إرسال رابط استعادة كلمة المرور';
       _setError(message);
       return message;
     } catch (_) {
@@ -159,14 +163,14 @@ class UserAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Guest access
+  // الدخول كضيف
   void loginAsGuest() {
-    _user = null;
+    _user = AppUser.guestUser();
     _setError(null);
     notifyListeners();
   }
 
-  // Sign out
+  // تسجيل الخروج
   Future<void> signOut() async {
     _setLoading(true);
     _setError(null);
@@ -174,6 +178,7 @@ class UserAuthProvider extends ChangeNotifier {
     try {
       await _authService.signOut();
       _user = null;
+      notifyListeners();
     } catch (_) {
       _setError('تعذر تسجيل الخروج');
     } finally {
