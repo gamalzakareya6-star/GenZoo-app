@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/gpa_provider.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/utils/gpa_calculator_engine.dart';
-
+import '../../models/gpa_model.dart';
+import '../../models/gpa_model.dart';
+import '../../models/gpa_model.dart';
+import '../../models/gpa_model.dart';
+import '../../models/gpa_model.dart';
 class GpaCalculatorScreen extends StatefulWidget {
   const GpaCalculatorScreen({super.key});
 
