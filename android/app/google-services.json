@@ -12,7 +12,20 @@
           "package_name": "com.gamal.genzoo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "971349959914-f3omvqjsb67p6uftpmv8tmgm1ef2r5tj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gamal.genzoo",
+            "certificate_hash": "22961328cedaa4ed7dcccee3651284f47c73b44e"
+          }
+        },
+        {
+          "client_id": "971349959914-iage5fin7ik95nhovvj7kollmd894rpd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCyItoPA7NaBYck4-tdTMWvIvj6TIe8eG0"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "971349959914-iage5fin7ik95nhovvj7kollmd894rpd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
