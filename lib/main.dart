@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -15,20 +17,28 @@ import 'providers/gpa_provider.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   Intl.defaultLocale = 'ar';
   await initializeDateFormatting('ar');
 
-  // Initialize Firebase with fallback tolerance
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    NotificationService.init(); // not awaited: don't delay app start
-  } catch (e) {
+
+    // Register the background notification handler
+    // before the application starts.
+    FirebaseMessaging.onBackgroundMessage(
+      firebaseMessagingBackgroundHandler,
+    );
+
+    // Configure notification permission and topic subscription.
+    await NotificationService.init();
+  } catch (e, stackTrace) {
     debugPrint('Firebase initialization notice: $e');
+    debugPrintStack(stackTrace: stackTrace);
   }
 
   runApp(const GenZooStudentPortalApp());
@@ -41,16 +51,27 @@ class GenZooStudentPortalApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => UserAuthProvider()),
-        ChangeNotifierProvider(create: (_) => NewsProvider()),
-        ChangeNotifierProvider(create: (_) => MaterialsProvider()),
-        ChangeNotifierProvider(create: (_) => GpaProvider()),
+        ChangeNotifierProvider(
+          create: (_) => UserAuthProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NewsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MaterialsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => GpaProvider(),
+        ),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
-        scaffoldMessengerKey: NotificationService.messengerKey,
+        scaffoldMessengerKey:
+            NotificationService.messengerKey,
         locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
+        supportedLocales: const [
+          Locale('ar'),
+        ],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
