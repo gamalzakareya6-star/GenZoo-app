@@ -55,7 +55,7 @@ jobs:
               cred,
               options={"projectId": PROJECT_ID},
           )
-          db = firestore.client(app=app, project=PROJECT_ID)
+          db = firestore.client(app=app)
 
           state_ref = db.collection("system_notification_state").document("news")
           state = state_ref.get()
