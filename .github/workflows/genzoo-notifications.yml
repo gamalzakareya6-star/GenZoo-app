@@ -1,0 +1,117 @@
+name: GenZoo Automatic Notifications
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genzoo-automatic-notifications
+  cancel-in-progress: false
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Firebase Admin SDK
+        run: pip install firebase-admin
+
+      - name: Check new posts and send notifications
+        env:
+          GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import firebase_admin
+          from firebase_admin import credentials, firestore, messaging
+
+          raw = os.environ.get("GENZOO_FCM_SERVICE_ACCOUNT")
+          if not raw:
+              raise RuntimeError("Missing GitHub secret.")
+
+          service_data = json.loads(raw)
+          cred = credentials.Certificate(service_data)
+          app = firebase_admin.initialize_app(cred)
+          db = firestore.client(app=app)
+
+          state_ref = db.collection("system_notification_state").document("news")
+          state = state_ref.get()
+
+          posts = list(db.collection("news").stream())
+
+          def post_key(doc):
+              data = doc.to_dict() or {}
+              published = data.get("publishedAt")
+              if published is None:
+                  published_value = ""
+              elif hasattr(published, "isoformat"):
+                  published_value = published.isoformat()
+              else:
+                  published_value = str(published)
+              return (published_value, doc.id)
+
+          posts.sort(key=post_key)
+
+          if not posts:
+              print("No news posts found.")
+              raise SystemExit(0)
+
+          if not state.exists:
+              latest = posts[-1]
+              state_ref.set({
+                  "lastPublishedAt": post_key(latest)[0],
+                  "lastDocumentId": latest.id
+              })
+              print("Initialized cursor; existing posts will not trigger notifications.")
+              raise SystemExit(0)
+
+          saved = state.to_dict() or {}
+          last_key = (
+              saved.get("lastPublishedAt", ""),
+              saved.get("lastDocumentId", "")
+          )
+
+          new_posts = [doc for doc in posts if post_key(doc) > last_key]
+
+          if not new_posts:
+              print("No new posts.")
+              raise SystemExit(0)
+
+          for doc in new_posts:
+              data = doc.to_dict() or {}
+              title = str(data.get("title") or "منشور جديد في GenZoo")
+              content = str(data.get("content") or "")
+              body = content[:180] if content else "تم نشر محتوى جديد. افتح GenZoo للاطلاع عليه."
+
+              message = messaging.Message(
+                  topic="news",
+                  notification=messaging.Notification(
+                      title=title[:100],
+                      body=body
+                  ),
+                  data={"postId": doc.id},
+              )
+              messaging.send(message, app=app)
+              print(f"Notification sent for post {doc.id}")
+
+          latest = new_posts[-1]
+          state_ref.set({
+              "lastPublishedAt": post_key(latest)[0],
+              "lastDocumentId": latest.id
+          })
+          print(f"Processed {len(new_posts)} new post(s).")
+          PY
