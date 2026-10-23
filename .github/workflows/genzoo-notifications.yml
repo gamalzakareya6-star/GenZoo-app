@@ -1,3 +1,4 @@
+
 name: GenZoo Automatic Notifications
 
 on:
@@ -39,50 +40,65 @@ jobs:
           import firebase_admin
           from firebase_admin import credentials, firestore, messaging
 
+          PROJECT_ID = "genzoo-app"
+
           raw = os.environ.get("GENZOO_FCM_SERVICE_ACCOUNT")
           if not raw:
               raise RuntimeError("Missing GitHub secret.")
 
           service_data = json.loads(raw)
+          print("Target Firebase project:", PROJECT_ID)
+          print("Service account project:", service_data.get("project_id"))
+
           cred = credentials.Certificate(service_data)
-          app = firebase_admin.initialize_app(cred)
-          db = firestore.client(app=app)
+          app = firebase_admin.initialize_app(
+              cred,
+              options={"projectId": PROJECT_ID},
+          )
+          db = firestore.client(app=app, project=PROJECT_ID)
 
           state_ref = db.collection("system_notification_state").document("news")
           state = state_ref.get()
-
           posts = list(db.collection("news").stream())
+
+          print("Cursor exists:", state.exists)
+          print("News documents found:", len(posts))
 
           def post_key(doc):
               data = doc.to_dict() or {}
               published = data.get("publishedAt")
-              if published is None:
-                  published_value = ""
-              elif hasattr(published, "isoformat"):
-                  published_value = published.isoformat()
+              if hasattr(published, "isoformat"):
+                  published = published.isoformat()
+              elif published is None:
+                  published = ""
               else:
-                  published_value = str(published)
-              return (published_value, doc.id)
+                  published = str(published)
+              return published, doc.id
 
           posts.sort(key=post_key)
 
-          if not posts:
-              print("No news posts found.")
-              raise SystemExit(0)
-
           if not state.exists:
+              if not posts:
+                  print("No news found; cursor not initialized.")
+                  raise SystemExit(0)
+
               latest = posts[-1]
               state_ref.set({
                   "lastPublishedAt": post_key(latest)[0],
-                  "lastDocumentId": latest.id
+                  "lastDocumentId": latest.id,
               })
-              print("Initialized cursor; existing posts will not trigger notifications.")
+
+              if not state_ref.get().exists:
+                  raise RuntimeError("Cursor write verification failed.")
+
+              print("Initialized cursor in genzoo-app.")
+              print("Existing posts were skipped; next new post can be detected.")
               raise SystemExit(0)
 
           saved = state.to_dict() or {}
           last_key = (
               saved.get("lastPublishedAt", ""),
-              saved.get("lastDocumentId", "")
+              saved.get("lastDocumentId", ""),
           )
 
           new_posts = [doc for doc in posts if post_key(doc) > last_key]
@@ -95,23 +111,29 @@ jobs:
               data = doc.to_dict() or {}
               title = str(data.get("title") or "منشور جديد في GenZoo")
               content = str(data.get("content") or "")
-              body = content[:180] if content else "تم نشر محتوى جديد. افتح GenZoo للاطلاع عليه."
+              body = content[:180] or "تم نشر محتوى جديد. افتح GenZoo للاطلاع عليه."
 
               message = messaging.Message(
                   topic="news",
                   notification=messaging.Notification(
                       title=title[:100],
-                      body=body
+                      body=body,
                   ),
                   data={"postId": doc.id},
               )
-              messaging.send(message, app=app)
-              print(f"Notification sent for post {doc.id}")
+
+              message_id = messaging.send(message, app=app)
+              print("FCM accepted message:", message_id)
+              print("Notification sent for post:", doc.id)
 
           latest = new_posts[-1]
           state_ref.set({
               "lastPublishedAt": post_key(latest)[0],
-              "lastDocumentId": latest.id
+              "lastDocumentId": latest.id,
           })
-          print(f"Processed {len(new_posts)} new post(s).")
+
+          if not state_ref.get().exists:
+              raise RuntimeError("Cursor update verification failed.")
+
+          print("Processed new posts:", len(new_posts))
           PY
