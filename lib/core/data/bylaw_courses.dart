@@ -521,8 +521,6 @@ const List<BylawCourse> bylawCourses = [
   BylawCourse('P4119', 'فيزياء المواد العازلة', 2),
   BylawCourse('P4710', 'فيزياء البلازما', 2),
   BylawCourse('P4911', 'فيزياء جوية (1)', 2),
-  BylawCourse('P
-4912', 'فيزياء حيوى', 2),
   BylawCourse('P4913', 'فيزياء جوية (2)', 2),
   BylawCourse('P4914', 'الطاقات المتجددة', 2),
   BylawCourse('U131', 'حاسب آلى (1)', 2, universityReq: true),
