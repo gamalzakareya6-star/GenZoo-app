@@ -82,7 +82,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(_isEditing ? 'تم حفظ التعديل' : 'تم نشر الإعلان بنجاح!'),
             backgroundColor: Colors.green,
           ),
