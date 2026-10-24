@@ -18,10 +18,20 @@ class AppConstants {
     'دراسات عليا',
   ];
 
-  static const List<String> semesters = [
-    'الفصل الدراسي الأول',
-    'الفصل الدراسي الثاني',
-    'الفصل الصيفي',
+  // Departments (used to organise the study materials).
+  // Edit this list to add or rename a department.
+  static const List<String> departments = [
+    'علم الحيوان',
+    'علم الحشرات',
+    'علم النبات',
+    'الميكروبيولوجي',
+    'الكيمياء',
+    'الكيمياء الحيوية',
+    'الفيزياء',
+    'الرياضيات',
+    'علوم الحاسب',
+    'الجيولوجيا',
+    'مقررات عامة (كل الأقسام)',
   ];
 
   static const List<String> materialTypes = [

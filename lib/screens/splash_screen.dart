@@ -141,6 +141,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // A saved session means the user stays signed in (only an explicit
+    // sign-out returns to the login screen).
+    if (authProvider.user == null) {
+      authProvider.restoreFromFirebaseSession();
+    }
+
     final Widget next = authProvider.user != null
         ? const MainNavigationScreen()
         : const LoginScreen();

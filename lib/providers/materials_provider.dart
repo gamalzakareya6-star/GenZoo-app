@@ -8,8 +8,7 @@ class MaterialsProvider extends ChangeNotifier {
 
   List<StudyMaterial> _materials = [];
   bool _isLoading = true;
-  String _selectedYear = 'الكل';
-  String _selectedSemester = 'الكل';
+  String _selectedDepartment = 'الكل';
   String _searchQuery = '';
   double _uploadProgress = 0.0;
   bool _isUploading = false;
@@ -19,21 +18,20 @@ class MaterialsProvider extends ChangeNotifier {
 
   List<StudyMaterial> get materials => _materials;
   bool get isLoading => _isLoading;
-  String get selectedYear => _selectedYear;
-  String get selectedSemester => _selectedSemester;
+  String get selectedDepartment => _selectedDepartment;
   double get uploadProgress => _uploadProgress;
   bool get isUploading => _isUploading;
   String? get uploadError => _uploadError;
 
   List<StudyMaterial> get filteredMaterials {
     return _materials.where((m) {
-      final matchesYear = _selectedYear == 'الكل' || m.academicYear == _selectedYear;
-      final matchesSem = _selectedSemester == 'الكل' || m.semester == _selectedSemester;
+      final matchesDept =
+          _selectedDepartment == 'الكل' || m.department == _selectedDepartment;
       final matchesQuery = _searchQuery.isEmpty ||
           m.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           m.subject.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           m.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesYear && matchesSem && matchesQuery;
+      return matchesDept && matchesQuery;
     }).toList();
   }
 
@@ -46,12 +44,7 @@ class MaterialsProvider extends ChangeNotifier {
     notifyListeners();
 
     _subscription?.cancel();
-    _subscription = _firestoreService
-        .streamMaterials(
-          academicYear: _selectedYear == 'الكل' ? null : _selectedYear,
-          semester: _selectedSemester == 'الكل' ? null : _selectedSemester,
-        )
-        .listen((list) {
+    _subscription = _firestoreService.streamMaterials().listen((list) {
       _materials = list;
       _isLoading = false;
       notifyListeners();
@@ -62,14 +55,9 @@ class MaterialsProvider extends ChangeNotifier {
     });
   }
 
-  void setYearFilter(String year) {
-    _selectedYear = year;
-    _fetchMaterials();
-  }
-
-  void setSemesterFilter(String semester) {
-    _selectedSemester = semester;
-    _fetchMaterials();
+  void setDepartmentFilter(String department) {
+    _selectedDepartment = department;
+    notifyListeners();
   }
 
   void setSearchQuery(String query) {
@@ -83,8 +71,7 @@ class MaterialsProvider extends ChangeNotifier {
     required String fileExtension,
     required String title,
     required String description,
-    required String academicYear,
-    required String semester,
+    required String department,
     required String subject,
     required String materialType,
     required String uploaderName,
@@ -98,8 +85,7 @@ class MaterialsProvider extends ChangeNotifier {
         id: '',
         title: title.trim(),
         description: description.trim(),
-        academicYear: academicYear,
-        semester: semester,
+        department: department,
         subject: subject.trim(),
         materialType: materialType,
         fileUrl: fileUrl.trim(),

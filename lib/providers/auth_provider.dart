@@ -36,9 +36,51 @@ class UserAuthProvider extends ChangeNotifier {
       final profile =
           await _authService.getUserProfile(firebaseUser.uid);
 
-      _user = profile;
+      if (profile != null) {
+        _user = profile;
+        notifyListeners();
+        return;
+      }
+
+      // The profile could not be loaded (offline / slow network). The user is
+      // still signed in, so keep the session instead of showing the login
+      // screen, and retry loading the profile in the background.
+      _user = _fallbackUser(firebaseUser);
       notifyListeners();
+      _retryProfileLoad(firebaseUser.uid);
     });
+  }
+
+  AppUser _fallbackUser(User u) => AppUser(
+        uid: u.uid,
+        email: u.email ?? '',
+        displayName: u.displayName ?? (u.email?.split('@').first ?? 'طالب'),
+        role: UserRole.student,
+      );
+
+  Future<void> _retryProfileLoad(String uid) async {
+    for (var i = 0; i < 6; i++) {
+      await Future.delayed(const Duration(seconds: 5));
+      final current = _authService.currentUser;
+      if (current == null || current.uid != uid) return;
+      final profile = await _authService.getUserProfile(uid);
+      if (profile != null) {
+        _user = profile;
+        notifyListeners();
+        return;
+      }
+    }
+  }
+
+  /// Used at startup: a saved Firebase session exists, so the user stays
+  /// signed in even when the profile has not been loaded yet.
+  void restoreFromFirebaseSession() {
+    final u = _authService.currentUser;
+    if (u != null && _user == null) {
+      _user = _fallbackUser(u);
+      notifyListeners();
+      _retryProfileLoad(u.uid);
+    }
   }
 
   void _setLoading(bool value) {

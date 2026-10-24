@@ -22,8 +22,7 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
   final TextEditingController _subjectController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
-  String _selectedYear = AppConstants.academicYears.first;
-  String _selectedSemester = AppConstants.semesters.first;
+  String _selectedDepartment = AppConstants.departments.first;
   String _selectedType = AppConstants.materialTypes.first;
 
   @override
@@ -46,8 +45,7 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
       fileExtension: _fileType,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      academicYear: _selectedYear,
-      semester: _selectedSemester,
+      department: _selectedDepartment,
       subject: _subjectController.text.trim(),
       materialType: _selectedType,
       uploaderName: user?.displayName ?? 'الإدارة',
@@ -160,43 +158,23 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // Academic Year & Semester
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedYear,
-                        decoration: const InputDecoration(labelText: 'الفرقة الدراسية'),
-                        isExpanded: true,
-                        items: AppConstants.academicYears.map((year) {
-                          return DropdownMenuItem(
-                            value: year,
-                            child: Text(year, overflow: TextOverflow.ellipsis),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedYear = val);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedSemester,
-                        decoration: const InputDecoration(labelText: 'الفصل الدراسي'),
-                        isExpanded: true,
-                        items: AppConstants.semesters.map((sem) {
-                          return DropdownMenuItem(
-                            value: sem,
-                            child: Text(sem, overflow: TextOverflow.ellipsis),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedSemester = val);
-                        },
-                      ),
-                    ),
-                  ],
+                // Department
+                DropdownButtonFormField<String>(
+                  value: _selectedDepartment,
+                  decoration: const InputDecoration(
+                    labelText: 'القسم',
+                    prefixIcon: Icon(Icons.account_tree_outlined),
+                  ),
+                  isExpanded: true,
+                  items: AppConstants.departments.map((d) {
+                    return DropdownMenuItem(
+                      value: d,
+                      child: Text(d, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedDepartment = val);
+                  },
                 ),
                 const SizedBox(height: 14),
 

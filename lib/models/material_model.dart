@@ -4,8 +4,7 @@ class StudyMaterial {
   final String id;
   final String title;
   final String description;
-  final String academicYear;
-  final String semester;
+  final String department;
   final String subject;
   final String materialType;
   final String fileUrl;
@@ -20,8 +19,7 @@ class StudyMaterial {
     required this.id,
     required this.title,
     required this.description,
-    required this.academicYear,
-    required this.semester,
+    required this.department,
     required this.subject,
     required this.materialType,
     required this.fileUrl,
@@ -48,8 +46,7 @@ class StudyMaterial {
       id: doc.id,
       title: data['title'] as String? ?? 'مادة بدون عنوان',
       description: data['description'] as String? ?? '',
-      academicYear: data['academicYear'] as String? ?? 'عام',
-      semester: data['semester'] as String? ?? 'عام',
+      department: data['department'] as String? ?? 'مقررات عامة (كل الأقسام)',
       subject: data['subject'] as String? ?? 'عام',
       materialType: data['materialType'] as String? ?? 'مستند',
       fileUrl: data['fileUrl'] as String? ?? '',
@@ -66,8 +63,7 @@ class StudyMaterial {
     return {
       'title': title,
       'description': description,
-      'academicYear': academicYear,
-      'semester': semester,
+      'department': department,
       'subject': subject,
       'materialType': materialType,
       'fileUrl': fileUrl,

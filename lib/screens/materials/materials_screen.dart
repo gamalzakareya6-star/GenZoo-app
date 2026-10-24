@@ -21,8 +21,7 @@ class MaterialsScreen extends StatelessWidget {
     final isAdmin = auth.isAdmin;
     final theme = Theme.of(context);
 
-    final allYears = ['الكل', ...AppConstants.academicYears];
-    final allSemesters = ['الكل', ...AppConstants.semesters];
+    final allDepartments = ['الكل', ...AppConstants.departments];
 
     return Scaffold(
       floatingActionButton: isAdmin
@@ -59,71 +58,25 @@ class MaterialsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
 
-                // Year & Semester Filter Dropdowns
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.cardBorderLight),
+                // Department filter chips
+                SizedBox(
+                  height: 38,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: allDepartments.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final d = allDepartments[i];
+                      return ChoiceChip(
+                        label: Text(
+                          d == 'الكل' ? 'كل الأقسام' : d,
+                          style: const TextStyle(fontSize: 12),
                         ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: provider.selectedYear,
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down, size: 20),
-                            items: allYears.map((year) {
-                              return DropdownMenuItem(
-                                value: year,
-                                child: Text(
-                                  year == 'الكل' ? 'كل الفرق' : year,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) provider.setYearFilter(val);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.cardBorderLight),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: provider.selectedSemester,
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down, size: 20),
-                            items: allSemesters.map((sem) {
-                              return DropdownMenuItem(
-                                value: sem,
-                                child: Text(
-                                  sem == 'الكل' ? 'كل الفصول' : sem,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) provider.setSemesterFilter(val);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                        selected: provider.selectedDepartment == d,
+                        onSelected: (_) => provider.setDepartmentFilter(d),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -137,7 +90,7 @@ class MaterialsScreen extends StatelessWidget {
                     ? EmptyStateView(
                         icon: Icons.folder_open_rounded,
                         title: 'لا توجد مواد',
-                        subtitle: 'لا توجد ملفات تطابق الفرقة أو المادة المختارة.',
+                        subtitle: 'لا توجد ملفات تطابق القسم أو البحث المختار.',
                         action: isAdmin
                             ? ElevatedButton.icon(
                                 onPressed: () {
@@ -234,7 +187,7 @@ class MaterialsScreen extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  item.academicYear,
+                  item.department,
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ],

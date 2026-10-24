@@ -48,12 +48,8 @@ class FirestoreService {
   // ---------------------------------------------------------------------------
   // STUDY MATERIALS
   // ---------------------------------------------------------------------------
-  Stream<List<StudyMaterial>> streamMaterials({
-    String? academicYear,
-    String? semester,
-    String? subject,
-  }) {
-    // Filtering by year/semester happens client-side in MaterialsProvider,
+  Stream<List<StudyMaterial>> streamMaterials() {
+    // Filtering by department happens client-side in MaterialsProvider,
     // so a single-field order is enough (no composite index required).
     return _firestore
         .collection(AppConstants.materialsCollection)
