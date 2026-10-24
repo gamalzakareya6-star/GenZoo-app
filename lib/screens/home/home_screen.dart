@@ -270,9 +270,12 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.person_pin, size: 16, color: Colors.grey.shade500),
                   const SizedBox(width: 4),
-                  Text(
-                    item.authorName,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  Flexible(
+                    child: Text(
+                      '${item.authorName}${item.source == 'telegram' ? ' • تليجرام' : ''}${item.edited ? ' • معدّل' : ''}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
                   ),
                   const Spacer(),
                   if (item.externalUrl != null && item.externalUrl!.isNotEmpty)
@@ -286,6 +289,14 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   if (isAdmin) ...[
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                      tooltip: 'تعديل الإعلان',
+                      onPressed: () => showDialog(
+                        context: context,
+                        builder: (_) => AddEditNewsDialog(item: item),
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
                       tooltip: 'حذف الإعلان',

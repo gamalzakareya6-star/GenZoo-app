@@ -148,3 +148,14 @@ Ensure your `android/app/src/main/AndroidManifest.xml` includes these permission
 - الـ TOKEN: Fine-grained token لهذا المستودع فقط بصلاحية **Actions: Read and write**.
 
 الأخبار المنشورة قبل هذا التحديث (بدون حقل `notified`) لا يُرسل لها إشعار.
+
+## Telegram → app news
+
+`scripts/telegram_sync.py` (run every minute by the notifications workflow) turns messages posted in Telegram groups/channels where the bot is a member into news posts, which are then pushed as notifications. Join/leave/service messages, bot messages and commands are ignored, and duplicates are skipped (same message, same text within 48h, albums, edits update the existing post).
+
+Setup (GitHub → Settings → Secrets and variables → Actions):
+1. Create a bot with @BotFather, copy the token → secret `TELEGRAM_BOT_TOKEN`.
+2. In BotFather: `/setprivacy` → choose the bot → **Disable** (so it can read group messages), then add the bot to each group (as admin for channels).
+3. Optional secrets: `TELEGRAM_CHAT_IDS` (comma separated allow-list) and `TELEGRAM_ONLY_ADMINS=true` (only messages sent by group admins become posts).
+
+Admins can edit any post from the app (pencil button on the post card).

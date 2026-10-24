@@ -35,6 +35,16 @@ jobs:
       - name: Install Firebase Admin SDK
         run: pip install -r scripts/requirements.txt
 
+      - name: Import Telegram group messages as posts
+        # A Telegram problem must never block the notifications below.
+        continue-on-error: true
+        env:
+          GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          TELEGRAM_ONLY_ADMINS: ${{ secrets.TELEGRAM_ONLY_ADMINS }}
+        run: python scripts/telegram_sync.py
+
       - name: Send notifications for new posts
         env:
           GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}

@@ -10,6 +10,8 @@ class NewsItem {
   final String? imageUrl;
   final String? externalUrl;
   final DateTime publishedAt;
+  final String source; // 'app' or 'telegram'
+  final bool edited;
 
   NewsItem({
     required this.id,
@@ -21,6 +23,8 @@ class NewsItem {
     this.imageUrl,
     this.externalUrl,
     required this.publishedAt,
+    this.source = 'app',
+    this.edited = false,
   });
 
   factory NewsItem.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +39,8 @@ class NewsItem {
       imageUrl: data['imageUrl'] as String?,
       externalUrl: data['externalUrl'] as String?,
       publishedAt: (data['publishedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      source: data['source'] as String? ?? 'app',
+      edited: (data['edited'] as bool? ?? false) || (data['manuallyEdited'] as bool? ?? false),
     );
   }
 

@@ -3,9 +3,13 @@ import 'package:provider/provider.dart';
 import '../../providers/news_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../models/news_model.dart';
 
 class AddEditNewsDialog extends StatefulWidget {
-  const AddEditNewsDialog({super.key});
+  /// When [item] is given the dialog edits that post instead of creating one.
+  final NewsItem? item;
+
+  const AddEditNewsDialog({super.key, this.item});
 
   @override
   State<AddEditNewsDialog> createState() => _AddEditNewsDialogState();
@@ -20,6 +24,23 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
   String _selectedCategory = AppConstants.newsCategories.first;
   bool _isPinned = false;
   bool _isSubmitting = false;
+
+  bool get _isEditing => widget.item != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.item;
+    if (item != null) {
+      _titleController.text = item.title;
+      _contentController.text = item.content;
+      _linkController.text = item.externalUrl ?? '';
+      _isPinned = item.isPinned;
+      _selectedCategory = AppConstants.newsCategories.contains(item.category)
+          ? item.category
+          : AppConstants.newsCategories.first;
+    }
+  }
 
   @override
   void dispose() {
@@ -37,20 +58,32 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
     final newsProvider = Provider.of<NewsProvider>(context, listen: false);
 
     try {
-      await newsProvider.addNews(
-        title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        category: _selectedCategory,
-        isPinned: _isPinned,
-        authorName: user?.displayName ?? 'الإدارة',
-        externalUrl: _linkController.text.trim().isNotEmpty ? _linkController.text.trim() : null,
-      );
+      final link = _linkController.text.trim().isNotEmpty ? _linkController.text.trim() : null;
+      if (_isEditing) {
+        await newsProvider.updateNews(
+          id: widget.item!.id,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          category: _selectedCategory,
+          isPinned: _isPinned,
+          externalUrl: link,
+        );
+      } else {
+        await newsProvider.addNews(
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          category: _selectedCategory,
+          isPinned: _isPinned,
+          authorName: user?.displayName ?? 'الإدارة',
+          externalUrl: link,
+        );
+      }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تم نشر الإعلان بنجاح!'),
+            content: Text(_isEditing ? 'تم حفظ التعديل' : 'تم نشر الإعلان بنجاح!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -94,8 +127,8 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
                       child: const Icon(Icons.campaign_rounded, color: Colors.blue),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'إعلان جديد',
+                    Text(
+                      _isEditing ? 'تعديل الإعلان' : 'إعلان جديد',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -179,7 +212,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('نشر الإعلان'),
+                          : Text(_isEditing ? 'حفظ التعديل' : 'نشر الإعلان'),
                     ),
                   ],
                 ),

@@ -62,6 +62,24 @@ class NewsProvider extends ChangeNotifier {
     await _firestoreService.addNews(item);
   }
 
+  Future<void> updateNews({
+    required String id,
+    required String title,
+    required String content,
+    required String category,
+    required bool isPinned,
+    String? externalUrl,
+  }) async {
+    await _firestoreService.editNews(
+      id: id,
+      title: title,
+      content: content,
+      category: category,
+      isPinned: isPinned,
+      externalUrl: externalUrl,
+    );
+  }
+
   Future<void> deleteNews(String id) async {
     await _firestoreService.deleteNews(id);
   }

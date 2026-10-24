@@ -41,6 +41,27 @@ class FirestoreService {
         .update(item.toMap());
   }
 
+  /// Admin edit: changes only the editable fields, keeps everything else
+  /// (including the Telegram link) and never re-sends a notification.
+  Future<void> editNews({
+    required String id,
+    required String title,
+    required String content,
+    required String category,
+    required bool isPinned,
+    String? externalUrl,
+  }) async {
+    await _firestore.collection(AppConstants.newsCollection).doc(id).update({
+      'title': title,
+      'content': content,
+      'category': category,
+      'isPinned': isPinned,
+      'externalUrl': externalUrl,
+      'manuallyEdited': true,
+      'editedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> deleteNews(String id) async {
     await _firestore.collection(AppConstants.newsCollection).doc(id).delete();
   }
