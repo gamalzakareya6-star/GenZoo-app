@@ -8,6 +8,7 @@ import '../widgets/custom_widgets.dart';
 import 'home/home_screen.dart';
 import 'materials/materials_screen.dart';
 import 'azkar/azkar_screen.dart';
+import 'quran/quran_screen.dart';
 import 'essential_info/essential_info_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
@@ -33,6 +34,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     HomeScreen(),
     MaterialsScreen(),
     AzkarScreen(),
+    QuranScreen(),
     EssentialInfoScreen(),
   ];
 
@@ -127,6 +129,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.spa_outlined),
             selectedIcon: Icon(Icons.spa_rounded),
             label: 'الأذكار',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book_rounded),
+            label: 'القرآن',
           ),
           NavigationDestination(
             icon: Icon(Icons.calculate_outlined),

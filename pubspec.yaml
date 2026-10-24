@@ -27,6 +27,8 @@ dependencies:
 
   # Utility & Integrations
   url_launcher: ^6.3.0
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
   intl: any
   google_fonts: ^6.2.1
 

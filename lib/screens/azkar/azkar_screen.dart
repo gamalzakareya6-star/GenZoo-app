@@ -2,6 +2,7 @@ import '../../widgets/animations.dart';
 import 'package:flutter/material.dart';
 import '../../models/azkar_model.dart';
 import '../../core/constants/app_colors.dart';
+import 'tasbeeh_view.dart';
 
 class AzkarScreen extends StatefulWidget {
   const AzkarScreen({super.key});
@@ -19,6 +20,10 @@ class _AzkarScreenState extends State<AzkarScreen> with SingleTickerProviderStat
     {'id': 'study', 'label': 'أدعية المذاكرة', 'sub': 'أدعية المذاكرة'},
     {'id': 'morning', 'label': 'أذكار الصباح', 'sub': 'الصباح'},
     {'id': 'evening', 'label': 'أذكار المساء', 'sub': 'المساء'},
+    {'id': 'after_prayer', 'label': 'بعد الصلاة', 'sub': 'بعد الصلاة'},
+    {'id': 'sleep', 'label': 'النوم والاستيقاظ', 'sub': 'النوم'},
+    {'id': 'general', 'label': 'أدعية متنوعة', 'sub': 'متنوعة'},
+    {'id': 'tasbeeh', 'label': 'السبحة', 'sub': 'السبحة'},
   ];
 
   @override
@@ -117,6 +122,8 @@ class _AzkarScreenState extends State<AzkarScreen> with SingleTickerProviderStat
             SliverToBoxAdapter(
               child: TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 indicatorColor: AppColors.secondary,
                 labelColor: AppColors.secondary,
                 unselectedLabelColor: Colors.grey.shade600,
@@ -133,6 +140,9 @@ class _AzkarScreenState extends State<AzkarScreen> with SingleTickerProviderStat
         body: TabBarView(
           controller: _tabController,
           children: _categories.map((cat) {
+            if (cat['id'] == 'tasbeeh') {
+              return const TasbeehView();
+            }
             final categoryItems = _allAzkar.where((z) => z.category == cat['id']).toList();
             return _buildAzkarList(categoryItems);
           }).toList(),

@@ -23,10 +23,10 @@ A comprehensive, production-ready Android student portal application designed wi
    - Download counter and direct file launch via `url_launcher`.
    - **Admin Upload Screen**: Powered by `file_picker` with real-time Firebase Storage upload progress.
 
-4. **Azkar & Spiritual Companion**:
-   - Serene, distraction-free typography designed with calming teal tones.
-   - Categorized tabs: **أدعية المذاكرة (Study Duas)**, **أذكار الصباح (Morning)**, and **أذكار المساء (Evening)**.
-   - Interactive counter buttons with completion indicators and reference notes.
+4. **Azkar, Tasbeeh & Quran**:
+   - Azkar organized in tabs: study duas, morning, evening, after prayer, sleep & waking, general duas (59 items with counters).
+   - **Electronic tasbeeh**: choose a dhikr and a target (33 / 99 / 100 / 1000 / open), haptic feedback, rounds and lifetime totals saved on the device.
+   - **Quran**: surah index with search, Uthmani text loaded from the public alquran.cloud API, adjustable font size, "continue reading", and a one-tap download for offline reading.
 
 5. **Essential Info & Flexible GPA Calculator**:
    - **Official Platforms**: Quick links to university SIS, Moodle/LMS, timetables, and library.
