@@ -45,16 +45,6 @@ jobs:
           TELEGRAM_ONLY_ADMINS: ${{ secrets.TELEGRAM_ONLY_ADMINS }}
         run: python scripts/telegram_sync.py
 
-      - name: Import private Telegram groups (own account)
-        continue-on-error: true
-        env:
-          GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
-          TELETHON_API_ID: ${{ secrets.TELETHON_API_ID }}
-          TELETHON_API_HASH: ${{ secrets.TELETHON_API_HASH }}
-          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }}
-          TELETHON_CHAT_IDS: ${{ secrets.TELETHON_CHAT_IDS }}
-        run: python scripts/telegram_user_sync.py
-
       - name: Send notifications for new posts
         env:
           GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}

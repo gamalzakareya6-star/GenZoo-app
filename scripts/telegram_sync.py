@@ -25,8 +25,10 @@ Environment
                                admins (or the channel itself) become posts
 """
 import datetime as dt
+import hashlib
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -34,10 +36,10 @@ import urllib.request
 
 import firebase_admin
 from firebase_admin import credentials, firestore
-
-import news_import
+from google.api_core.exceptions import AlreadyExists
 
 PROJECT_ID = "genzoo-app"
+DUPLICATE_WINDOW = dt.timedelta(hours=48)
 MAX_MESSAGE_AGE = dt.timedelta(hours=24)  # never announce very old backlog
 STATE_DOC = ("system", "telegram_sync")
 
@@ -56,6 +58,10 @@ def tg(token: str, method: str, **params):
     if not body.get("ok"):
         raise RuntimeError(f"Telegram {method} failed: {body.get('description')}")
     return body["result"]
+
+
+def normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def sender_name(msg: dict) -> str:
@@ -174,23 +180,39 @@ def main() -> int:
                 skipped += 1
                 continue
 
+            # Same text posted again (another group, a repost, a forward).
+            digest = hashlib.sha256(normalize(text).encode()).hexdigest()[:40]
+            hash_ref = db.collection("telegram_hashes").document(digest)
+            try:
+                hash_ref.create({"newsId": doc_id, "createdAt": now})
+            except AlreadyExists:
+                prev = (hash_ref.get().to_dict() or {}).get("createdAt")
+                if prev and now - prev < DUPLICATE_WINDOW:
+                    print(f"Duplicate text skipped ({doc_id})")
+                    skipped += 1
+                    continue
+                hash_ref.set({"newsId": doc_id, "createdAt": now})
+
             username = chat.get("username")
             link = f"https://t.me/{username}/{msg['message_id']}" if username else None
-            if news_import.create_post(
-                db,
-                now=now,
-                doc_id=doc_id,
-                chat_id=chat["id"],
-                chat_title=str(chat.get("title") or "رسالة من تليجرام"),
-                message_id=msg["message_id"],
-                text=text,
-                author=sender_name(msg),
-                sent_at=sent_at,
-                link=link,
-            ):
-                created += 1
-            else:
-                skipped += 1
+            ref.set(
+                {
+                    "title": str(chat.get("title") or "رسالة من تليجرام")[:100],
+                    "content": text,
+                    "category": "عام",
+                    "isPinned": False,
+                    "authorName": sender_name(msg),
+                    "imageUrl": None,
+                    "externalUrl": link,
+                    "publishedAt": sent_at,
+                    "notified": False,  # picked up by send_notifications.py
+                    "source": "telegram",
+                    "telegramChatId": chat["id"],
+                    "telegramMessageId": msg["message_id"],
+                }
+            )
+            created += 1
+            print(f"New post from Telegram: {doc_id}")
 
     if last_id is not None:
         state_ref.set({"offset": offset, "updatedAt": firestore.SERVER_TIMESTAMP})
