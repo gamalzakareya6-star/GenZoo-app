@@ -159,3 +159,7 @@ Setup (GitHub → Settings → Secrets and variables → Actions):
 3. Optional secrets: `TELEGRAM_CHAT_IDS` (comma separated allow-list) and `TELEGRAM_ONLY_ADMINS=true` (only messages sent by group admins become posts).
 
 Admins can edit any post from the app (pencil button on the post card).
+
+### Private groups where the bot cannot be added
+
+`scripts/telegram_user_sync.py` can read such groups with your own Telegram account (runs at most every 5 minutes, only new messages, no backlog). Run `scripts/telegram_login_helper.py` once on Google Colab, then add the secrets `TELETHON_API_ID`, `TELETHON_API_HASH` (from my.telegram.org), `TELETHON_SESSION` and `TELETHON_CHAT_IDS`. The session string gives full access to the account: keep it secret.
