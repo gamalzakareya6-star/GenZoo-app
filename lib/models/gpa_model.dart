@@ -9,8 +9,9 @@ class CourseEntry {
   /// Grade key: A+, A, B+, B, C+, C, D or F.
   String grade;
 
-  /// Degree out of 100 when the student typed it; null means the grade was
-  /// picked directly and the percentage is estimated.
+  /// Degree the student typed, out of (creditHours x 100) as in the university
+  /// platform; null means the grade was picked directly and the percentage is
+  /// estimated.
   double? score;
 
   /// Course re-registered after failing it. A repeated failure is counted

@@ -114,7 +114,10 @@ class GpaCalculatorEngine {
         continue; // not part of the GPA
       }
 
-      final score = c.score ?? band.estimatedScore;
+      // The typed degree is out of (credit hours x 100); convert to percent.
+      final score = c.score != null
+          ? (c.score! / c.creditHours).clamp(0.0, 100.0).toDouble()
+          : band.estimatedScore;
       if (c.score == null) approx = true;
 
       semCredits += c.creditHours;

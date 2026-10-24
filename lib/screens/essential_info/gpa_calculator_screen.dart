@@ -703,17 +703,20 @@ class _CourseCardState extends State<_CourseCard> {
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 82,
+                  width: 112,
                   child: TextField(
                     controller: _scoreCtl,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: deco('الدرجة /100'),
+                    decoration:
+                        deco('الدرجة من ${formatNumber(c.creditHours * 100)}'),
                     onChanged: (t) {
                       final v = parseNumber(t);
                       if (t.trim().isEmpty) {
                         gpa.setScore(c.id, null);
-                      } else if (v != null && v >= 0 && v <= 100) {
+                      } else if (v != null &&
+                          v >= 0 &&
+                          v <= c.creditHours * 100) {
                         gpa.setScore(c.id, v);
                       }
                     },

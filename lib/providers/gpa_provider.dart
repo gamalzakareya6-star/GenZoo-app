@@ -237,6 +237,7 @@ class GpaProvider extends ChangeNotifier {
     c.code = course.code;
     c.creditHours = course.credits;
     c.universityReq = course.universityReq;
+    _syncGradeFromScore(c);
     _changed();
   }
 
@@ -244,6 +245,7 @@ class GpaProvider extends ChangeNotifier {
     final c = _find(id);
     if (c == null) return;
     c.creditHours = credits;
+    _syncGradeFromScore(c);
     _changed();
   }
 
@@ -251,8 +253,15 @@ class GpaProvider extends ChangeNotifier {
     final c = _find(id);
     if (c == null) return;
     c.score = score;
-    if (score != null) c.grade = BylawGrading.forScore(score).key;
+    _syncGradeFromScore(c);
     _changed();
+  }
+
+  /// The score is out of creditHours x 100, so the percentage is score/hours.
+  void _syncGradeFromScore(CourseEntry c) {
+    if (c.score != null && c.creditHours > 0) {
+      c.grade = BylawGrading.forScore(c.score! / c.creditHours).key;
+    }
   }
 
   void setGrade(String id, String grade) {
