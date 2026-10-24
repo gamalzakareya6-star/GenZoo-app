@@ -30,8 +30,9 @@ A comprehensive, production-ready Android student portal application designed wi
 
 5. **Essential Info & Flexible GPA Calculator**:
    - **Official Platforms**: Quick links to university SIS, Moodle/LMS, timetables, and library.
-   - **Pluggable GPA Engine**: Built using the **Strategy Pattern** (`Standard4ScaleStrategy`, `Standard5ScaleStrategy`, `CustomUniversityScaleStrategy`).
-   - Supports **Semester GPA**, **Cumulative CGPA** (with prior history), quality points, and honors standing badges.
+   - **Bylaw-based GPA calculator** (Faculty of Science, Menoufia): percentage + 4.0 points table (A+ ... F with Arabic letters أ+ ... ر), semester and cumulative GPA, overall rating, and academic probation when the cumulative percentage is below 60%.
+   - **Course autocomplete**: ~500 courses from the bylaws with their credit hours (`lib/core/data/bylaw_courses.dart`).
+   - Data is saved per account (local + Firestore `users/{uid}/private/gpa`; requires the matching Firestore rule in `firestore.rules`).
 
 6. **Admin Management Dashboard**:
    - Protected route accessible only to authenticated admins.
@@ -55,7 +56,7 @@ lib/
 │   │   ├── storage_service.dart    # Firebase Storage upload/delete with file_picker
 │   │   └── url_service.dart        # Safe link launcher
 │   └── utils/
-│       └── gpa_calculator_engine.dart # Strategy pattern for GPA & CGPA calculation
+│       └── gpa_calculator_engine.dart # Bylaw grading + GPA/CGPA engine
 ├── models/
 │   ├── user_model.dart             # AppUser model with role parsing
 │   ├── news_model.dart             # NewsItem model

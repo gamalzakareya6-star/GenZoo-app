@@ -99,8 +99,14 @@ class GenZooStudentPortalApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MaterialsProvider(),
         ),
-        ChangeNotifierProvider(
+        // Keeps the GPA calculator data separate for every account.
+        ChangeNotifierProxyProvider<UserAuthProvider, GpaProvider>(
           create: (_) => GpaProvider(),
+          update: (_, auth, gpa) {
+            final provider = gpa ?? GpaProvider();
+            provider.attachUser(auth.user?.uid);
+            return provider;
+          },
         ),
       ],
       child: MaterialApp(

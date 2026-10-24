@@ -23,6 +23,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Private per-user data (e.g. the saved GPA calculator): only its owner.
+    match /users/{userId}/private/{docId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
     match /news/{newsId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();

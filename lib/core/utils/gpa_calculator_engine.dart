@@ -1,254 +1,185 @@
 import '../../models/gpa_model.dart';
 
-/// Strategy Interface for GPA Scales
-/// Allows easily swapping or extending grading policies (4.0 scale, 5.0 scale, Egyptian, American, European ECTS, etc.)
-abstract class GpaScaleStrategy {
-  String get scaleName;
-  double get maxGpa;
-  List<String> get availableGrades;
-  double gradeToPoint(String letterGrade);
-  String evaluateStanding(double gpa);
+/// One row of the grading table (Article 13 of the bylaws).
+class GradeBand {
+  final String key; // A+, A, ...
+  final String arabic; // أ+, أ, ...
+  final double points;
+  final double minScore; // lower bound of the degree range (percent)
+  final double estimatedScore; // used when only the letter is known
+
+  const GradeBand(
+    this.key,
+    this.arabic,
+    this.points,
+    this.minScore,
+    this.estimatedScore,
+  );
 }
 
-/// Standard 4.0 Scale Strategy (Commonly used across American-style credit hour systems)
-class Standard4ScaleStrategy implements GpaScaleStrategy {
-  @override
-  String get scaleName => 'نظام 4.0 (القياسي)';
+/// Grading rules of the Faculty of Science, Menoufia University
+/// (credit-hour bylaws, 2024).
+class BylawGrading {
+  static const List<GradeBand> bands = [
+    GradeBand('A+', 'أ+', 4.0, 90, 95),
+    GradeBand('A', 'أ', 3.7, 85, 87.5),
+    GradeBand('B+', 'ب+', 3.3, 80, 82.5),
+    GradeBand('B', 'ب', 3.0, 75, 77.5),
+    GradeBand('C+', 'ج+', 2.7, 70, 72.5),
+    GradeBand('C', 'ج', 2.3, 65, 67.5),
+    GradeBand('D', 'د', 2.0, 60, 62.5),
+    GradeBand('F', 'ر', 0.0, 0, 50),
+  ];
 
-  @override
-  double get maxGpa => 4.0;
+  /// Minimum percentage to pass a course and to stay out of probation.
+  static const double passPercent = 60;
 
-  @override
-  List<String> get availableGrades => [
-        'A+',
-        'A',
-        'A-',
-        'B+',
-        'B',
-        'B-',
-        'C+',
-        'C',
-        'C-',
-        'D+',
-        'D',
-        'F',
-      ];
-
-  @override
-  double gradeToPoint(String letterGrade) {
-    switch (letterGrade.toUpperCase().trim()) {
-      case 'A+':
-        return 4.0;
-      case 'A':
-        return 4.0;
-      case 'A-':
-        return 3.7;
-      case 'B+':
-        return 3.3;
-      case 'B':
-        return 3.0;
-      case 'B-':
-        return 2.7;
-      case 'C+':
-        return 2.3;
-      case 'C':
-        return 2.0;
-      case 'C-':
-        return 1.7;
-      case 'D+':
-        return 1.3;
-      case 'D':
-        return 1.0;
-      case 'F':
-      default:
-        return 0.0;
+  static GradeBand forScore(double score) {
+    for (final b in bands) {
+      if (score >= b.minScore) return b;
     }
+    return bands.last;
   }
 
-  @override
-  String evaluateStanding(double gpa) {
-    if (gpa >= 3.7) return 'ممتاز مع مرتبة الشرف';
-    if (gpa >= 3.4) return 'ممتاز';
-    if (gpa >= 3.0) return 'جيد جداً';
-    if (gpa >= 2.5) return 'جيد';
-    if (gpa >= 2.0) return 'مقبول';
-    return 'إنذار أكاديمي';
+  static GradeBand forKey(String key) {
+    return bands.firstWhere((b) => b.key == key, orElse: () => bands.last);
   }
-}
 
-/// Standard 5.0 Scale Strategy (Common in Saudi Arabia, Gulf & international universities)
-class Standard5ScaleStrategy implements GpaScaleStrategy {
-  @override
-  String get scaleName => 'نظام 5.0';
+  /// Overall rating from a percentage.
+  static String verbalForPercent(double p) {
+    if (p >= 85) return 'ممتاز';
+    if (p >= 75) return 'جيد جداً';
+    if (p >= 65) return 'جيد';
+    if (p >= passPercent) return 'مقبول';
+    return 'راسب';
+  }
 
-  @override
-  double get maxGpa => 5.0;
+  static const List<List<double>> _anchors = [
+    [0, 40],
+    [2.0, 60],
+    [2.3, 65],
+    [2.7, 70],
+    [3.0, 75],
+    [3.3, 80],
+    [3.7, 85],
+    [4.0, 90],
+  ];
 
-  @override
-  List<String> get availableGrades => [
-        'A+',
-        'A',
-        'B+',
-        'B',
-        'C+',
-        'C',
-        'D+',
-        'D',
-        'F',
-      ];
-
-  @override
-  double gradeToPoint(String letterGrade) {
-    switch (letterGrade.toUpperCase().trim()) {
-      case 'A+':
-        return 5.0;
-      case 'A':
-        return 4.75;
-      case 'B+':
-        return 4.5;
-      case 'B':
-        return 4.0;
-      case 'C+':
-        return 3.5;
-      case 'C':
-        return 3.0;
-      case 'D+':
-        return 2.5;
-      case 'D':
-        return 2.0;
-      case 'F':
-      default:
-        return 1.0;
+  /// Rough percentage for a GPA, used only when the student did not enter the
+  /// previous cumulative percentage. It follows the lower bounds of the table.
+  static double approxPercentFromGpa(double gpa) {
+    final g = gpa.clamp(0.0, 4.0).toDouble();
+    for (var i = 0; i < _anchors.length - 1; i++) {
+      final a = _anchors[i];
+      final b = _anchors[i + 1];
+      if (g <= b[0]) {
+        final t = (g - a[0]) / (b[0] - a[0]);
+        return a[1] + t * (b[1] - a[1]);
+      }
     }
+    return _anchors.last[1];
   }
 
-  @override
-  String evaluateStanding(double gpa) {
-    if (gpa >= 4.5) return 'ممتاز مرتفع';
-    if (gpa >= 4.0) return 'جيد جداً';
-    if (gpa >= 3.25) return 'جيد';
-    if (gpa >= 2.75) return 'مقبول';
-    return 'إنذار';
-  }
-}
+  static double round2(double v) => (v * 100).round() / 100;
 
-/// Custom / University Specific Logic Placeholder
-/// Easily customize this class with your institution's specific regulations
-class CustomUniversityScaleStrategy implements GpaScaleStrategy {
-  @override
-  String get scaleName => 'نظام الجامعة المخصص';
-
-  @override
-  double get maxGpa => 4.0; // Change to match university ceiling
-
-  @override
-  List<String> get availableGrades => ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'];
-
-  @override
-  double gradeToPoint(String letterGrade) {
-    // -------------------------------------------------------------------------
-    // TODO: [CUSTOMIZATION HOOK]
-    // Insert your college's specific grade-to-point mappings here.
-    // Example: Some colleges map A+ to 4.3 or have different thresholds for D.
-    // -------------------------------------------------------------------------
-    switch (letterGrade.toUpperCase()) {
-      case 'A+':
-        return 4.0;
-      case 'A':
-        return 3.75;
-      case 'B+':
-        return 3.25;
-      case 'B':
-        return 3.0;
-      case 'C+':
-        return 2.5;
-      case 'C':
-        return 2.0;
-      case 'D':
-        return 1.5;
-      case 'F':
-      default:
-        return 0.0;
-    }
-  }
-
-  @override
-  String evaluateStanding(double gpa) {
-    // -------------------------------------------------------------------------
-    // TODO: [CUSTOMIZATION HOOK]
-    // Insert university honors / warning rules based on GPA & credit requirements.
-    // -------------------------------------------------------------------------
-    if (gpa >= 3.6) return 'امتياز';
-    if (gpa >= 3.0) return 'جيد جداً';
-    if (gpa >= 2.4) return 'جيد';
-    if (gpa >= 2.0) return 'مقبول';
-    return 'إنذار أكاديمي';
+  /// At graduation the GPA is rounded to one decimal when that favors the
+  /// student (Article 13, item 2).
+  static double graduationGpa(double gpa) {
+    final r = (gpa * 10).round() / 10;
+    return r > gpa ? r : gpa;
   }
 }
 
-/// Core GPA Calculation Engine
 class GpaCalculatorEngine {
-  /// Computes semester GPA and optionally combines with previous history for Cumulative GPA (CGPA)
   static GpaCalculationResult calculate({
     required List<CourseEntry> courses,
-    required GpaScaleStrategy strategy,
-    double? previousCumulativeGpa,
-    int? previousCompletedCredits,
+    double? previousGpa,
+    double? previousPercent,
+    double? previousCredits,
   }) {
-    if (courses.isEmpty) {
-      return GpaCalculationResult(
-        semesterGpa: 0.0,
-        totalSemesterCredits: 0,
-        totalQualityPoints: 0.0,
-        cumulativeGpa: previousCumulativeGpa,
-        totalCumulativeCredits: previousCompletedCredits ?? 0,
-        academicStanding: 'لم تتم إضافة مقررات',
-      );
+    double semPoints = 0, semScoreSum = 0, semCredits = 0;
+    double cumPoints = 0, cumScoreSum = 0, cumCredits = 0;
+    double registered = 0, universityCredits = 0;
+    var approx = false;
+
+    for (final c in courses) {
+      if (c.creditHours <= 0) continue;
+      if (c.status == CourseStatus.withdrawn) continue;
+      registered += c.creditHours;
+      if (c.status != CourseStatus.counted) continue; // incomplete / deferred
+      final band = BylawGrading.forKey(c.grade);
+
+      if (c.universityReq) {
+        if (band.key != 'F') universityCredits += c.creditHours;
+        continue; // not part of the GPA
+      }
+
+      final score = c.score ?? band.estimatedScore;
+      if (c.score == null) approx = true;
+
+      semCredits += c.creditHours;
+      semPoints += band.points * c.creditHours;
+      semScoreSum += score * c.creditHours;
+
+      // A repeated failure is counted only once in the cumulative GPA, and
+      // that failure is already part of the previous history.
+      final repeatedFailure = c.isRetake && band.key == 'F';
+      if (!repeatedFailure) {
+        cumCredits += c.creditHours;
+        cumPoints += band.points * c.creditHours;
+        cumScoreSum += score * c.creditHours;
+      }
     }
 
-    int semesterCredits = 0;
-    double semesterQualityPoints = 0.0;
+    final semGpa = semCredits > 0 ? semPoints / semCredits : 0.0;
+    final semPercent = semCredits > 0 ? semScoreSum / semCredits : 0.0;
 
-    for (final course in courses) {
-      if (course.creditHours <= 0) continue;
-      final point = strategy.gradeToPoint(course.letterGrade);
-      final qualityPoints = point * course.creditHours;
+    final hasHistory = previousGpa != null &&
+        previousCredits != null &&
+        previousCredits > 0;
 
-      semesterCredits += course.creditHours;
-      semesterQualityPoints += qualityPoints;
+    double cumGpa = semGpa;
+    double cumPercent = semPercent;
+    double totalCredits = semCredits;
+    var percentApprox = approx;
+    var priorProbation = false;
+
+    if (hasHistory) {
+      final prevCredits = previousCredits!;
+      final prevGpa = previousGpa!;
+      final prevPercentValue =
+          previousPercent ?? BylawGrading.approxPercentFromGpa(prevGpa);
+      if (previousPercent == null) percentApprox = true;
+
+      totalCredits = prevCredits + cumCredits;
+      cumGpa = (prevGpa * prevCredits + cumPoints) / totalCredits;
+      cumPercent = (prevPercentValue * prevCredits + cumScoreSum) / totalCredits;
+      priorProbation = prevPercentValue < BylawGrading.passPercent;
     }
 
-    final double semesterGpa = semesterCredits > 0
-        ? double.parse((semesterQualityPoints / semesterCredits).toStringAsFixed(2))
-        : 0.0;
-
-    // Cumulative GPA calculation
-    double? finalCgpa;
-    int totalCumulativeCredits = semesterCredits;
-
-    if (previousCumulativeGpa != null &&
-        previousCompletedCredits != null &&
-        previousCompletedCredits > 0) {
-      final double previousQualityPoints =
-          previousCumulativeGpa * previousCompletedCredits;
-      final double totalPoints = previousQualityPoints + semesterQualityPoints;
-      totalCumulativeCredits = previousCompletedCredits + semesterCredits;
-
-      finalCgpa = totalCumulativeCredits > 0
-          ? double.parse((totalPoints / totalCumulativeCredits).toStringAsFixed(2))
-          : semesterGpa;
-    }
-
-    final effectiveGpa = finalCgpa ?? semesterGpa;
-    final standing = strategy.evaluateStanding(effectiveGpa);
+    final hasData = hasHistory || semCredits > 0;
+    final shownPercent = hasData ? BylawGrading.round2(cumPercent) : 0.0;
+    final shownGpa = hasData ? BylawGrading.round2(cumGpa) : 0.0;
 
     return GpaCalculationResult(
-      semesterGpa: semesterGpa,
-      totalSemesterCredits: semesterCredits,
-      totalQualityPoints: semesterQualityPoints,
-      cumulativeGpa: finalCgpa,
-      totalCumulativeCredits: totalCumulativeCredits,
-      academicStanding: standing,
+      semesterGpa: BylawGrading.round2(semGpa),
+      semesterPercent: BylawGrading.round2(semPercent),
+      semesterCredits: semCredits,
+      semesterPercentApprox: approx,
+      registeredCredits: registered,
+      universityCredits: universityCredits,
+      hasHistory: hasHistory,
+      cumulativeGpa: shownGpa,
+      cumulativePercent: shownPercent,
+      cumulativeCredits: totalCredits,
+      percentApprox: percentApprox,
+      hasData: hasData,
+      verbal: hasData ? BylawGrading.verbalForPercent(shownPercent) : '-',
+      letter: hasData ? BylawGrading.forScore(shownPercent).arabic : '-',
+      onProbation: hasData && shownPercent < BylawGrading.passPercent,
+      priorProbation: priorProbation,
+      graduationGpa:
+          hasData ? BylawGrading.round2(BylawGrading.graduationGpa(shownGpa)) : 0.0,
     );
   }
 }
