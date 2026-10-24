@@ -1,9 +1,13 @@
 name: GenZoo Automatic Notifications
 
 on:
+  # Fast path: an external cron service (e.g. cron-job.org) calls the
+  # workflow_dispatch API every minute. See README for the setup.
+  workflow_dispatch:
+  # Fallback only. GitHub often delays scheduled runs by hours, so do not
+  # rely on it alone.
   schedule:
     - cron: "3,13,23,33,43,53 * * * *"
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,144 +29,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
 
       - name: Install Firebase Admin SDK
-        run: pip install firebase-admin
+        run: pip install -r scripts/requirements.txt
 
-      - name: Check new posts and send notifications
+      - name: Send notifications for new posts
         env:
           GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
-        run: |
-          python - <<'PY'
-          import os
-          import json
-          import firebase_admin
-          from firebase_admin import credentials, firestore, messaging
-
-          PROJECT_ID = "genzoo-app"
-
-          raw = os.environ.get("GENZOO_FCM_SERVICE_ACCOUNT")
-          if not raw:
-              raise RuntimeError(
-                  "GitHub secret GENZOO_FCM_SERVICE_ACCOUNT is missing."
-              )
-
-          service_data = json.loads(raw)
-
-          print("Target Firebase project:", PROJECT_ID)
-          print("Service account project:", service_data.get("project_id"))
-
-          if service_data.get("project_id") != PROJECT_ID:
-              raise RuntimeError("Service account project ID does not match.")
-
-          cred = credentials.Certificate(service_data)
-          app = firebase_admin.initialize_app(
-              cred,
-              options={"projectId": PROJECT_ID},
-          )
-
-          db = firestore.client(app=app)
-          state_ref = db.collection(
-              "system_notification_state"
-          ).document("news")
-
-          state_snapshot = state_ref.get()
-          news_docs = list(db.collection("news").stream())
-
-          print("Cursor exists:", state_snapshot.exists)
-          print("News documents found:", len(news_docs))
-
-          def post_key(doc):
-              data = doc.to_dict() or {}
-              published = data.get("publishedAt")
-
-              if hasattr(published, "isoformat"):
-                  published = published.isoformat()
-              elif published is None:
-                  published = ""
-              else:
-                  published = str(published)
-
-              return published, doc.id
-
-          news_docs.sort(key=post_key)
-
-          # First run: save the latest existing post without notifying
-          # about old posts. Later runs can detect new posts.
-          if not state_snapshot.exists:
-              if not news_docs:
-                  print("No news found; cursor not initialized.")
-                  raise SystemExit(0)
-
-              latest = news_docs[-1]
-              latest_time, latest_id = post_key(latest)
-
-              state_ref.set({
-                  "lastPublishedAt": latest_time,
-                  "lastDocumentId": latest_id,
-              })
-
-              check = state_ref.get()
-              if not check.exists:
-                  raise RuntimeError("Cursor initialization failed.")
-
-              print("Initialized cursor in genzoo-app.")
-              print("Existing posts skipped.")
-              raise SystemExit(0)
-
-          saved = state_snapshot.to_dict() or {}
-          last_key = (
-              saved.get("lastPublishedAt", ""),
-              saved.get("lastDocumentId", ""),
-          )
-
-          new_posts = [
-              doc for doc in news_docs
-              if post_key(doc) > last_key
-          ]
-
-          if not new_posts:
-              print("No new posts.")
-              raise SystemExit(0)
-
-          # Send notifications before updating the cursor.
-          # If sending fails, the cursor remains unchanged for retry.
-          for doc in new_posts:
-              data = doc.to_dict() or {}
-
-              title = str(
-                  data.get("title") or "منشور جديد في GenZoo"
-              )
-              content = str(data.get("content") or "")
-              body = (
-                  content[:180]
-                  or "تم نشر محتوى جديد. افتح GenZoo للاطلاع عليه."
-              )
-
-              message = messaging.Message(
-                  topic="news",
-                  notification=messaging.Notification(
-                      title=title[:100],
-                      body=body,
-                  ),
-                  data={"postId": doc.id},
-              )
-
-              message_id = messaging.send(message, app=app)
-              print("FCM accepted message:", message_id)
-              print("Notification sent for post:", doc.id)
-
-          latest = new_posts[-1]
-          latest_time, latest_id = post_key(latest)
-
-          state_ref.set({
-              "lastPublishedAt": latest_time,
-              "lastDocumentId": latest_id,
-          })
-
-          if not state_ref.get().exists:
-              raise RuntimeError("Cursor update verification failed.")
-
-          print("Processed new posts:", len(new_posts))
-          print("Workflow completed successfully.")
-          PY
+        run: python scripts/send_notifications.py

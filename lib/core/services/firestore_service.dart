@@ -26,7 +26,12 @@ class FirestoreService {
   }
 
   Future<void> addNews(NewsItem item) async {
-    await _firestore.collection(AppConstants.newsCollection).add(item.toMap());
+    final data = item.toMap();
+    // Server time (not the admin phone's clock) so ordering is reliable, and
+    // `notified: false` marks this post as waiting for a push notification.
+    data['publishedAt'] = FieldValue.serverTimestamp();
+    data['notified'] = false;
+    await _firestore.collection(AppConstants.newsCollection).add(data);
   }
 
   Future<void> updateNews(NewsItem item) async {

@@ -137,6 +137,13 @@ Ensure your `android/app/src/main/AndroidManifest.xml` includes these permission
 5. **Making an admin:** register normally in the app, then in Firestore open `users/<uid>` and change `role` from `student` to `admin`.
    (Self-registration as admin was removed — the rules block it.)
 
-## 🔔 الإشعارات (مجانية)
-التطبيق يشترك تلقائيًا في topic باسم `news`. لإرسال إشعار: Firebase Console → Messaging → New campaign → Firebase Notification messages → اكتب العنوان والنص → Target: **Topic = news** → Publish.
-(إرسال الإشعار تلقائيًا من داخل التطبيق عند نشر خبر يحتاج Cloud Functions وهي مدفوعة، لذلك الإرسال يدوي من الـ Console.)
+## 🔔 الإشعارات (مجانية وتلقائية)
+التطبيق يشترك تلقائيًا في topic باسم `news`. عند نشر خبر من التطبيق يُحفظ بـ `notified: false`، ثم يرسله الـ workflow `genzoo-notifications.yml` (الملف `scripts/send_notifications.py`) بأولوية عالية ويحوّل العلامة إلى `true`.
+
+**لضمان وصول الإشعار خلال دقيقة** (جدولة GitHub قد تتأخر ساعات): أنشئ مهمة في https://cron-job.org (مجانية) كل دقيقة:
+- URL: `https://api.github.com/repos/gamalzakareya6-star/GenZoo-app/actions/workflows/genzoo-notifications.yml/dispatches`
+- Method: `POST`، Body: `{"ref":"main"}`
+- Headers: `Authorization: Bearer <TOKEN>` و `Accept: application/vnd.github+json`
+- الـ TOKEN: Fine-grained token لهذا المستودع فقط بصلاحية **Actions: Read and write**.
+
+الأخبار المنشورة قبل هذا التحديث (بدون حقل `notified`) لا يُرسل لها إشعار.
