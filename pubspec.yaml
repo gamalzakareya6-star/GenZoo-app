@@ -2,7 +2,7 @@
 name: genzoo_student
 description: "A comprehensive student portal Android application built with Flutter & Firebase"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
