@@ -62,7 +62,16 @@ jobs:
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
       - name: Build APK
-        run: flutter build apk --release --build-number=${{ github.run_number }}
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! flutter build apk --release --build-number=${{ github.run_number }} > build_out.txt 2>&1; then
+            tail -n 60 build_out.txt
+            ERRS=$(grep -E "Error:|error:|^e: |What went wrong|Could not|FAILURE|Execution failed|not found|isn't defined|doesn't" -A2 build_out.txt | head -c 2500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Build failed::$ERRS"
+            exit 1
+          fi
+          tail -n 5 build_out.txt
 
       - name: Show APK signing certificate
         shell: bash
