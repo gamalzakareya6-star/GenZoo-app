@@ -32,7 +32,17 @@ jobs:
           channel: stable
 
       - name: Install Dependencies
-        run: flutter pub get
+        shell: bash
+        run: |
+          # On failure, publish the error as an annotation so it can be read
+          # without opening the raw logs.
+          if ! flutter pub get > pub_out.txt 2>&1; then
+            cat pub_out.txt
+            MSG=$(head -c 1500 pub_out.txt | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=pub get failed::$MSG"
+            exit 1
+          fi
+          cat pub_out.txt
 
       - name: Configure release signing
         env:
