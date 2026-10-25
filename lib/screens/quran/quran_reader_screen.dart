@@ -1,9 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/quran_service.dart';
+import '../../core/services/quran_audio.dart';
 
 const String _basmala = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 
@@ -28,6 +30,25 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   final QuranService _service = QuranService();
   late Future<List<QuranAyah>> _future;
   double _fontSize = 26;
+  final QuranAudioController _audio = QuranAudioController();
+  final Map<int, TapGestureRecognizer> _tapRecognizers = {};
+
+  TapGestureRecognizer _recognizerFor(int ayah) {
+    return _tapRecognizers.putIfAbsent(
+      ayah,
+      () => TapGestureRecognizer()
+        ..onTap = () => _audio.playFrom(widget.surah.number, ayah),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final r in _tapRecognizers.values) {
+      r.dispose();
+    }
+    _audio.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -69,7 +90,15 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     final theme = Theme.of(context);
     final number = widget.surah.number;
 
+    return AnimatedBuilder(
+      animation: _audio,
+      builder: (context, _) => _buildScaffold(context, theme, number),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, ThemeData theme, int number) {
     return Scaffold(
+      bottomNavigationBar: _AudioBar(audio: _audio, surah: widget.surah),
       appBar: AppBar(
         title: Text(widget.surah.name),
         actions: [
@@ -109,7 +138,19 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
 
           final spans = <InlineSpan>[];
           for (final a in ayahs) {
-            spans.add(TextSpan(text: '${a.text} ', style: textStyle));
+            final isCurrent = _audio.currentAyah == a.number &&
+                (_audio.isPlaying || _audio.isLoading);
+            spans.add(
+              TextSpan(
+                text: '${a.text} ',
+                style: isCurrent
+                    ? textStyle.copyWith(
+                        backgroundColor: AppColors.primary.withOpacity(0.15),
+                      )
+                    : textStyle,
+                recognizer: _recognizerFor(a.number),
+              ),
+            );
             spans.add(
               TextSpan(
                 text: '﴿${toArabicDigits(a.number)}﴾ ',
@@ -209,6 +250,110 @@ class _ErrorView extends StatelessWidget {
               label: const Text('إعادة المحاولة'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom player: reciter, previous / play / next, current ayah.
+class _AudioBar extends StatelessWidget {
+  final QuranAudioController audio;
+  final SurahInfo surah;
+
+  const _AudioBar({required this.audio, required this.surah});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final err = audio.error;
+    if (err != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+        audio.clearError();
+      });
+    }
+
+    return Material(
+      elevation: 8,
+      color: theme.colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              PopupMenuButton<int>(
+                tooltip: 'اختر القارئ',
+                initialValue: audio.reciterIndex,
+                onSelected: audio.setReciter,
+                itemBuilder: (_) => [
+                  for (var i = 0; i < quranReciters.length; i++)
+                    PopupMenuItem<int>(
+                      value: i,
+                      child: Text(quranReciters[i].name),
+                    ),
+                ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.record_voice_over_rounded,
+                          size: 20, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          audio.reciter.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (audio.currentAyah != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    'آية ${toArabicDigits(audio.currentAyah!)}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              IconButton(
+                icon: const Icon(Icons.skip_previous_rounded),
+                onPressed: audio.hasAudio ? audio.previous : null,
+              ),
+              audio.isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      ),
+                    )
+                  : IconButton.filled(
+                      icon: Icon(audio.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded),
+                      tooltip: audio.isPlaying ? 'إيقاف مؤقت' : 'تشغيل السورة',
+                      onPressed: () => audio.isPlaying
+                          ? audio.pause()
+                          : audio.resumeOrPlay(surah.number),
+                    ),
+              IconButton(
+                icon: const Icon(Icons.skip_next_rounded),
+                onPressed: audio.hasAudio ? audio.next : null,
+              ),
+            ],
+          ),
         ),
       ),
     );

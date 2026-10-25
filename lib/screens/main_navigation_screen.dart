@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../core/constants/app_colors.dart';
 import '../widgets/custom_widgets.dart';
+import '../widgets/update_dialog.dart';
 import 'home/home_screen.dart';
 import 'materials/materials_screen.dart';
 import 'azkar/azkar_screen.dart';
@@ -23,6 +24,17 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Offer a new version (if any) shortly after the app opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) checkForAppUpdate(context);
+      });
+    });
+  }
 
   @override
   void dispose() {

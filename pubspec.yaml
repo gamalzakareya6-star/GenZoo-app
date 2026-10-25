@@ -32,6 +32,13 @@ dependencies:
   intl: any
   google_fonts: ^6.2.1
 
+  # Quran audio, Qibla and in-app updates
+  just_audio: ^0.9.40
+  geolocator: ^12.0.0
+  flutter_compass: ^0.8.1
+  package_info_plus: ^8.0.2
+  ota_update: ^6.1.0
+
   # UI Enhancement Icons
   cupertino_icons: ^1.0.8
 

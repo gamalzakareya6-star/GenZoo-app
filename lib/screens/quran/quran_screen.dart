@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/quran_service.dart';
 import '../../widgets/animations.dart';
 import 'quran_reader_screen.dart';
+import '../qibla/qibla_screen.dart';
 
 /// Removes Arabic diacritics and unifies alef forms so search ignores them.
 String _normalize(String input) {
@@ -225,6 +226,15 @@ class _QuranScreenState extends State<QuranScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      onPressed: () => Navigator.push(
+                        context,
+                        AppRoute.fadeSlide(const QiblaScreen()),
+                      ),
+                      icon: const Icon(Icons.explore_rounded),
+                      tooltip: 'اتجاه القبلة',
+                    ),
+                    const SizedBox(width: 4),
                     IconButton.filledTonal(
                       onPressed: _downloadAll,
                       icon: const Icon(Icons.download_for_offline_rounded),

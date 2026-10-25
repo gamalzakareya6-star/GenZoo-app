@@ -8,6 +8,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write # publish the APK as a GitHub Release (in-app updates)
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -74,3 +77,16 @@ jobs:
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # Every successful build on main becomes a release "build-<number>".
+      # The app checks the latest release and offers to install it.
+      - name: Publish release for in-app update
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk GenZoo.apk
+          NOTES="$(git log -1 --pretty=%s)"
+          gh release create "build-${{ github.run_number }}" GenZoo.apk \
+            --title "GenZoo build ${{ github.run_number }}" \
+            --notes "$NOTES" --latest
