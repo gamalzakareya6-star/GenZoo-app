@@ -49,11 +49,7 @@ jobs:
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
       - name: Build APK
-        env:
-          # Optional repository secrets; Google's TEST ad ids are used when empty.
-          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-          ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
-        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=ADMOB_BANNER_ID="$ADMOB_BANNER_ID"
+        run: flutter build apk --release --build-number=${{ github.run_number }}
 
       - name: Show APK signing certificate
         shell: bash

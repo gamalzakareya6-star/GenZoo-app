@@ -5,8 +5,6 @@ import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../core/constants/app_colors.dart';
 import '../widgets/custom_widgets.dart';
-import '../widgets/ad_banner.dart';
-import '../core/constants/ad_config.dart';
 import 'home/home_screen.dart';
 import 'materials/materials_screen.dart';
 import 'azkar/azkar_screen.dart';
@@ -106,17 +104,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onPageChanged: (i) => setState(() => _currentIndex = i),
         children: _screens.map((w) => KeepAlivePage(child: w)).toList(),
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // One banner above the navigation bar; hidden (but kept loaded) on
-          // the Quran / Azkar tabs.
-          Visibility(
-            visible: AdConfig.tabsWithAds.contains(_currentIndex),
-            maintainState: true,
-            child: const AdBanner(),
-          ),
-          NavigationBar(
+      bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
@@ -152,8 +140,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             selectedIcon: Icon(Icons.calculate_rounded),
             label: 'المعلومات والمعدل',
           ),
-        ],
-      ),
         ],
       ),
     );

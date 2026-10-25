@@ -18,8 +18,6 @@ import 'providers/materials_provider.dart';
 import 'providers/gpa_provider.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'core/constants/ad_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,15 +43,6 @@ Future<void> main() async {
   } catch (e, stackTrace) {
     debugPrint('GenZoo: Firebase initialization failed: $e');
     debugPrintStack(stackTrace: stackTrace);
-  }
-
-  // Ads are optional: never let them delay or break startup.
-  if (AdConfig.enabled) {
-    try {
-      MobileAds.instance.initialize();
-    } catch (e) {
-      debugPrint('GenZoo: ads init failed: $e');
-    }
   }
 
   // Start the application without waiting for notification
