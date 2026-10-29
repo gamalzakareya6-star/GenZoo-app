@@ -1,0 +1,75 @@
+name: Shorebird Patch
+
+# Sends Dart-code changes to installed apps as a small patch (no APK download).
+# Native changes (new plugins, Android manifest/gradle) cannot be patched: run
+# "Build APK" manually for those (a new full release).
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shorebird-patch
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Shorebird is set up
+        id: chk
+        shell: bash
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ] || [ ! -f shorebird.yaml ]; then
+            echo "::notice::Shorebird is not set up yet, so no patch was made (Build APK handles builds)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.chk.outputs.enabled == 'true'
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: shorebirdtech/setup-shorebird@v1
+        if: steps.chk.outputs.enabled == 'true'
+        with:
+          cache: true
+
+      - name: Configure release signing
+        if: steps.chk.outputs.enabled == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
+
+      - name: Create patch
+        if: steps.chk.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! shorebird patch android --release-version=latest --artifact=apk > patch_out.txt 2>&1; then
+            tail -n 60 patch_out.txt
+            ERRS=$(tail -n 40 patch_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Patch failed (a full release may be needed)::$ERRS"
+            exit 1
+          fi
+          tail -n 15 patch_out.txt

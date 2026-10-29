@@ -1,0 +1,60 @@
+name: Shorebird Setup (one time)
+
+# Run once, manually, after adding the SHOREBIRD_TOKEN secret. It registers the
+# app in Shorebird (creates shorebird.yaml) and commits the result.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      - name: Register the app with Shorebird
+        shell: bash
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ]; then
+            echo "::error title=Missing secret::Add the SHOREBIRD_TOKEN secret first."
+            exit 1
+          fi
+          if [ -f shorebird.yaml ]; then
+            echo "::notice::shorebird.yaml already exists; nothing to do."
+            exit 0
+          fi
+          if ! shorebird init --force > init_out.txt 2>&1; then
+            if ! shorebird init > init_out2.txt 2>&1 < /dev/null; then
+              ERRS=$(tail -n 30 init_out.txt init_out2.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=shorebird init failed::$ERRS"
+              exit 1
+            fi
+          fi
+          cat shorebird.yaml
+
+      - name: Commit the Shorebird configuration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f init_out.txt init_out2.txt
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "Set up Shorebird (app id)"
+            git push
+          fi

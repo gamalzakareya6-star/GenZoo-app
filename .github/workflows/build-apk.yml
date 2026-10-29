@@ -12,8 +12,34 @@ permissions:
   contents: write # publish the APK as a GitHub Release (in-app updates)
 
 jobs:
-  build:
+  # Once Shorebird is set up (SHOREBIRD_TOKEN secret + shorebird.yaml), a push
+  # is delivered as a small patch by shorebird-patch.yml, so a full APK is only
+  # built when this workflow is started manually (new base release).
+  decide:
     runs-on: ubuntu-latest
+    env:
+      HAS_SB: ${{ secrets.SHOREBIRD_TOKEN != '' }}
+    outputs:
+      build: ${{ steps.d.outputs.build }}
+      shorebird: ${{ steps.d.outputs.shorebird }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: d
+        run: |
+          SB=false
+          if [ "$HAS_SB" = "true" ] && [ -f shorebird.yaml ]; then SB=true; fi
+          BUILD=true
+          if [ "$SB" = "true" ] && [ "${{ github.event_name }}" = "push" ]; then BUILD=false; fi
+          echo "shorebird=$SB" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "Shorebird enabled: $SB / full build: $BUILD"
+
+  build:
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -25,13 +51,21 @@ jobs:
           distribution: zulu
           java-version: '17'
 
+      - name: Set up Shorebird
+        if: needs.decide.outputs.shorebird == 'true'
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
       - name: Set up Flutter
+        if: needs.decide.outputs.shorebird != 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
           channel: stable
 
       - name: Install Dependencies
+        if: needs.decide.outputs.shorebird != 'true'
         shell: bash
         run: |
           # On failure, publish the error as an annotation so it can be read
@@ -62,6 +96,7 @@ jobs:
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
       - name: Build APK
+        if: needs.decide.outputs.shorebird != 'true'
         shell: bash
         run: |
           set -o pipefail
@@ -73,10 +108,34 @@ jobs:
           fi
           tail -n 5 build_out.txt
 
+      # Base release through Shorebird: later code changes are shipped as
+      # small patches (shorebird-patch.yml) to apps built from this release.
+      - name: Build APK (Shorebird release)
+        if: needs.decide.outputs.shorebird == 'true'
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! shorebird release android --artifact apk -- --build-number=${{ github.run_number }} > build_out.txt 2>&1; then
+            tail -n 60 build_out.txt
+            ERRS=$(tail -n 40 build_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Shorebird release failed::$ERRS"
+            exit 1
+          fi
+          tail -n 15 build_out.txt
+
+      - name: Locate APK
+        shell: bash
+        run: |
+          APK=$(find build/app/outputs -name 'app-release.apk' | head -n 1)
+          if [ -z "$APK" ]; then echo "::error::app-release.apk not found"; exit 1; fi
+          mkdir -p dist
+          cp "$APK" dist/app-release.apk
+          echo "APK at $APK"
+
       - name: Show APK signing certificate
         shell: bash
         run: |
-          APK="build/app/outputs/flutter-apk/app-release.apk"
+          APK="dist/app-release.apk"
 
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
 
@@ -95,16 +154,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: dist/app-release.apk
 
       # Every successful build on main becomes a release "build-<number>".
       # The app checks the latest release and offers to install it.
       - name: Publish release for in-app update
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || needs.decide.outputs.shorebird == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk GenZoo.apk
+          cp dist/app-release.apk GenZoo.apk
           NOTES="$(git log -1 --pretty=%s)"
           gh release create "build-${{ github.run_number }}" GenZoo.apk \
             --title "GenZoo build ${{ github.run_number }}" \

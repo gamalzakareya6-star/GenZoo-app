@@ -163,3 +163,15 @@ Admins can edit any post from the app (pencil button on the post card).
 ## File uploads (Google Drive, free)
 
 Announcements can carry attached files. Files are saved in your Google Drive through a free Apps Script web app: follow the setup steps at the top of `scripts/drive_upload.gs`, then paste the Web app URL in the app: Admin dashboard -> "إعداد رفع الملفات". Max 15 MB per file. Publish the updated `firestore.rules` (new `config` rule). Links inside a post open when tapped and the text can be selected/copied.
+
+## Small updates with Shorebird (code push)
+
+Dart-code changes can reach installed apps as a tiny background patch (applied on the next launch) instead of a full APK download.
+
+One-time setup:
+1. Create an account at https://console.shorebird.dev, then **Account -> API Keys -> Create API Key**; copy it.
+2. Add it as the GitHub secret `SHOREBIRD_TOKEN`.
+3. Run the workflow **Shorebird Setup (one time)** (Actions tab). It creates `shorebird.yaml`.
+4. Run **Build APK** manually once: it makes the Shorebird base release. Install that APK.
+
+After that, every push that changes `lib/` or `assets/` runs **Shorebird Patch**. Native changes (new plugins, Android manifest/gradle) cannot be patched: run **Build APK** manually, which publishes a full release (the in-app updater offers it).
