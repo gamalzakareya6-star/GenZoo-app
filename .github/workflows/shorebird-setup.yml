@@ -25,20 +25,27 @@ jobs:
         with:
           cache: true
 
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+
       # The Gradle wrapper (android/gradlew) is not stored in the repository;
       # Flutter generates it, and `shorebird init` needs it.
       - name: Prepare the Android project
         shell: bash
         run: |
-          shorebird flutter pub get
-          if ! shorebird flutter build apk --config-only > prep_out.txt 2>&1; then
-            echo "config-only failed, doing a normal build instead:"
-            tail -n 20 prep_out.txt
-            shorebird flutter build apk --release > prep_out2.txt 2>&1 || {
-              ERRS=$(tail -n 30 prep_out2.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
-              echo "::error title=Preparing the Android project failed::$ERRS"
-              exit 1
-            }
+          flutter pub get > prep_out.txt 2>&1 || {
+            ERRS=$(tail -n 30 prep_out.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=flutter pub get failed::$ERRS"; exit 1; }
+          flutter build apk --config-only >> prep_out.txt 2>&1 || true
+          if [ ! -f android/gradlew ]; then
+            echo "gradlew still missing; doing a normal build to generate it"
+            flutter build apk --release >> prep_out.txt 2>&1 || true
+          fi
+          if [ ! -f android/gradlew ]; then
+            ERRS=$(tail -n 30 prep_out.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=android/gradlew was not generated::$ERRS"; exit 1
           fi
           ls android/gradlew
 
