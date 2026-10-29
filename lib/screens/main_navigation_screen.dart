@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../core/constants/app_colors.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/interactive_bottom_bar.dart';
 import 'home/home_screen.dart';
 import 'materials/materials_screen.dart';
 import 'azkar/azkar_screen.dart';
@@ -116,9 +117,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onPageChanged: (i) => setState(() => _currentIndex = i),
         children: _screens.map((w) => KeepAlivePage(child: w)).toList(),
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: InteractiveBottomBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
+        controller: _pageController,
+        onItemSelected: (index) {
           setState(() => _currentIndex = index);
           _pageController.animateToPage(
             index,
@@ -126,32 +128,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             curve: Curves.easeOutCubic,
           );
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.newspaper_outlined),
-            selectedIcon: Icon(Icons.newspaper_rounded),
-            label: 'الإعلانات',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder_rounded),
-            label: 'المواد',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.spa_outlined),
-            selectedIcon: Icon(Icons.spa_rounded),
-            label: 'الأذكار',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book_rounded),
-            label: 'القرآن',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate_rounded),
-            label: 'المعلومات والمعدل',
-          ),
+        items: const [
+          InteractiveNavItem(
+              icon: Icons.newspaper_outlined,
+              activeIcon: Icons.newspaper_rounded,
+              label: 'الإعلانات'),
+          InteractiveNavItem(
+              icon: Icons.folder_outlined,
+              activeIcon: Icons.folder_rounded,
+              label: 'المواد'),
+          InteractiveNavItem(
+              icon: Icons.spa_outlined,
+              activeIcon: Icons.spa_rounded,
+              label: 'الأذكار'),
+          InteractiveNavItem(
+              icon: Icons.menu_book_outlined,
+              activeIcon: Icons.menu_book_rounded,
+              label: 'القرآن'),
+          InteractiveNavItem(
+              icon: Icons.calculate_outlined,
+              activeIcon: Icons.calculate_rounded,
+              label: 'المعدل'),
         ],
       ),
     );
