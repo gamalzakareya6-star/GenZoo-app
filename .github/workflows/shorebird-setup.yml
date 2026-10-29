@@ -25,6 +25,23 @@ jobs:
         with:
           cache: true
 
+      # The Gradle wrapper (android/gradlew) is not stored in the repository;
+      # Flutter generates it, and `shorebird init` needs it.
+      - name: Prepare the Android project
+        shell: bash
+        run: |
+          shorebird flutter pub get
+          if ! shorebird flutter build apk --config-only > prep_out.txt 2>&1; then
+            echo "config-only failed, doing a normal build instead:"
+            tail -n 20 prep_out.txt
+            shorebird flutter build apk --release > prep_out2.txt 2>&1 || {
+              ERRS=$(tail -n 30 prep_out2.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=Preparing the Android project failed::$ERRS"
+              exit 1
+            }
+          fi
+          ls android/gradlew
+
       - name: Register the app with Shorebird
         shell: bash
         run: |
@@ -50,7 +67,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -f init_out.txt init_out2.txt
+          rm -f init_out.txt init_out2.txt prep_out.txt prep_out2.txt
           git add -A
           if git diff --cached --quiet; then
             echo "Nothing to commit."
