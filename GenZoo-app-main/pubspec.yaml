@@ -1,0 +1,66 @@
+
+name: genzoo_student
+description: "A comprehensive student portal Android application built with Flutter & Firebase"
+publish_to: 'none'
+version: 1.1.0+2
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase Core & Services
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_messaging: ^15.1.3
+
+  # Google Sign-In
+  google_sign_in: ^6.2.2
+
+  # State Management
+  provider: ^6.1.2
+
+  # Utility & Integrations
+  url_launcher: ^6.3.0
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  intl: any
+  google_fonts: ^6.2.1
+
+  # Quran audio, Qibla and in-app updates
+  just_audio: ^0.9.40
+  geolocator: ^12.0.0
+  flutter_compass: ^0.8.1
+  package_info_plus: ^8.0.2
+  ota_update: ^7.1.0
+  file_picker: ^8.1.2
+
+  # Offline Storage, Sharing & Notifications
+  path_provider: ^2.1.4
+  share_plus: ^10.0.2
+  open_filex: ^4.5.0
+  flutter_local_notifications: ^17.2.3
+
+  # In-App PDF Viewing, Annotation & Exporting
+  pdfx: ^2.6.0
+  pdf: ^3.11.1
+
+  # UI Enhancement Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - shorebird.yaml
