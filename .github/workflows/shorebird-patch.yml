@@ -66,9 +66,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! shorebird patch android --release-version=latest --artifact=apk > patch_out.txt 2>&1; then
+          if ! shorebird patch android --release-version=latest > patch_out.txt 2>&1; then
             tail -n 60 patch_out.txt
-            ERRS=$(tail -n 40 patch_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            ERRS=$(head -n 25 patch_out.txt | head -c 3000 | sed ':a;N;$!ba;s/\n/%0A/g')
             echo "::error title=Patch failed (a full release may be needed)::$ERRS"
             exit 1
           fi
