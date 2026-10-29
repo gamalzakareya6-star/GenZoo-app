@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/url_service.dart';
 import '../../widgets/custom_widgets.dart';
 import 'add_edit_news_dialog.dart';
+import '../../widgets/linkified_text.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -272,7 +273,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
-                      '${item.authorName}${item.source == 'telegram' ? ' • تليجرام' : ''}${item.edited ? ' • معدّل' : ''}',
+                      '${item.authorName}${item.source == 'telegram' ? ' • تليجرام' : ''}${item.edited ? ' • معدّل' : ''}${item.attachments.isNotEmpty ? ' • 📎${item.attachments.length}' : ''}',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
@@ -357,10 +358,35 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text('نشره ${item.authorName}', style: TextStyle(color: Colors.grey.shade600)),
                   const Divider(height: 24),
-                  Text(
+                  LinkifiedText(
                     item.content,
-                    style: const TextStyle(fontSize: 15, height: 1.5),
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Theme.of(ctx).colorScheme.onSurface,
+                    ),
                   ),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CopyTextButton(text: item.content),
+                  ),
+                  if (item.attachments.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text('الملفات المرفقة',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    for (final f in item.attachments)
+                      Card(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.insert_drive_file_outlined),
+                          title: Text(f.name, overflow: TextOverflow.ellipsis),
+                          trailing: const Icon(Icons.open_in_new, size: 18),
+                          onTap: () => UrlService.launchWebUrl(context, f.url),
+                        ),
+                      ),
+                  ],
                   if (item.externalUrl != null && item.externalUrl!.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     ElevatedButton.icon(

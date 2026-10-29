@@ -41,6 +41,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Address of the Google Drive upload script: signed-in users read it,
+    // only admins change it.
+    match /config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     match /quick_links/{linkId} {
       allow read: if true;
       allow write: if isAdmin();

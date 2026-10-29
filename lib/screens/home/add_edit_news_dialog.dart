@@ -1,9 +1,11 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/news_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/news_model.dart';
+import '../../core/services/drive_upload_service.dart';
 
 class AddEditNewsDialog extends StatefulWidget {
   /// When [item] is given the dialog edits that post instead of creating one.
@@ -24,6 +26,9 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
   String _selectedCategory = AppConstants.newsCategories.first;
   bool _isPinned = false;
   bool _isSubmitting = false;
+  bool _isUploading = false;
+  final List<UploadedFile> _attachments = [];
+  static const int _maxAttachments = 5;
 
   bool get _isEditing => widget.item != null;
 
@@ -36,6 +41,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
       _contentController.text = item.content;
       _linkController.text = item.externalUrl ?? '';
       _isPinned = item.isPinned;
+      _attachments.addAll(item.attachments);
       _selectedCategory = AppConstants.newsCategories.contains(item.category)
           ? item.category
           : AppConstants.newsCategories.first;
@@ -48,6 +54,32 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
     _contentController.dispose();
     _linkController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFiles() async {
+    final remaining = _maxAttachments - _attachments.length;
+    if (remaining <= 0) return;
+
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    if (result == null || !mounted) return;
+
+    setState(() => _isUploading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    for (final f in result.files.take(remaining)) {
+      final path = f.path;
+      if (path == null) continue;
+      try {
+        final uploaded = await DriveUploadService.upload(path, displayName: f.name);
+        if (!mounted) return;
+        setState(() => _attachments.add(uploaded));
+      } catch (e) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('${f.name}: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
+    if (mounted) setState(() => _isUploading = false);
   }
 
   Future<void> _submit() async {
@@ -67,6 +99,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
           category: _selectedCategory,
           isPinned: _isPinned,
           externalUrl: link,
+          attachments: _attachments,
         );
       } else {
         await newsProvider.addNews(
@@ -76,6 +109,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
           isPinned: _isPinned,
           authorName: user?.displayName ?? 'الإدارة',
           externalUrl: link,
+          attachments: _attachments,
         );
       }
 
@@ -194,7 +228,52 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
                     prefixIcon: Icon(Icons.link),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
+
+                // Attachments (stored in Google Drive)
+                Row(
+                  children: [
+                    const Icon(Icons.attach_file, size: 18),
+                    const SizedBox(width: 6),
+                    Text('الملفات المرفقة (${_attachments.length}/$_maxAttachments)',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: (_isUploading || _attachments.length >= _maxAttachments)
+                          ? null
+                          : _pickFiles,
+                      icon: _isUploading
+                          ? const SizedBox(
+                              width: 14, height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.upload_file, size: 18),
+                      label: Text(_isUploading ? 'جارٍ الرفع...' : 'رفع ملف'),
+                    ),
+                  ],
+                ),
+                if (_attachments.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final f in _attachments)
+                          InputChip(
+                            label: Text(f.name, overflow: TextOverflow.ellipsis),
+                            onDeleted: () => setState(() => _attachments.remove(f)),
+                          ),
+                      ],
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text(
+                    'الحد الأقصى 15 ميجابايت للملف. تُحفظ الملفات على Google Drive.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -205,7 +284,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submit,
+                      onPressed: (_isSubmitting || _isUploading) ? null : _submit,
                       child: _isSubmitting
                           ? const SizedBox(
                               width: 20,

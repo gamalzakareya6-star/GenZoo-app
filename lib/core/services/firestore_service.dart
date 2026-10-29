@@ -50,6 +50,7 @@ class FirestoreService {
     required String category,
     required bool isPinned,
     String? externalUrl,
+    required List<Map<String, dynamic>> attachments,
   }) async {
     await _firestore.collection(AppConstants.newsCollection).doc(id).update({
       'title': title,
@@ -57,6 +58,7 @@ class FirestoreService {
       'category': category,
       'isPinned': isPinned,
       'externalUrl': externalUrl,
+      'attachments': attachments,
       'manuallyEdited': true,
       'editedAt': FieldValue.serverTimestamp(),
     });

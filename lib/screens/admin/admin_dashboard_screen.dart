@@ -6,6 +6,7 @@ import '../../providers/news_provider.dart';
 import '../../providers/materials_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/services/drive_upload_service.dart';
 import '../../models/quick_link_model.dart';
 import '../home/add_edit_news_dialog.dart';
 import '../materials/upload_material_screen.dart';
@@ -181,6 +182,16 @@ class AdminDashboardScreen extends StatelessWidget {
               color: Colors.indigo.shade600,
               onTap: () => _showAddLinkDialog(context),
             ),
+            const SizedBox(height: 10),
+
+            _buildActionTile(
+              context,
+              title: 'إعداد رفع الملفات',
+              subtitle: 'اربط رفع الملفات بحساب Google Drive (رابط Web app)',
+              icon: Icons.cloud_sync_rounded,
+              color: Colors.teal.shade600,
+              onTap: () => _showUploadSetupDialog(context),
+            ),
             const SizedBox(height: 32),
           ],
         ),
@@ -248,6 +259,59 @@ class AdminDashboardScreen extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+
+  Future<void> _showUploadSetupDialog(BuildContext context) async {
+    final controller = TextEditingController(text: await DriveUploadService.getEndpoint() ?? '');
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إعداد رفع الملفات'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'الصق رابط Web app الخاص بسكربت Google Drive (الخطوات في أعلى ملف '
+              'scripts/drive_upload.gs في المستودع).',
+              style: TextStyle(fontSize: 12.5),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                hintText: 'https://script.google.com/macros/s/.../exec',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () async {
+              final url = controller.text.trim();
+              if (url.isNotEmpty && !url.startsWith('https://script.google.com/')) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('الرابط يجب أن يبدأ بـ https://script.google.com/')),
+                );
+                return;
+              }
+              await DriveUploadService.saveEndpoint(url);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم الحفظ')),
+                );
+              }
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
   }
 
   void _showAddLinkDialog(BuildContext context) {

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/services/drive_upload_service.dart';
 
 class NewsItem {
   final String id;
@@ -12,6 +13,7 @@ class NewsItem {
   final DateTime publishedAt;
   final String source; // 'app' or 'telegram'
   final bool edited;
+  final List<UploadedFile> attachments;
 
   NewsItem({
     required this.id,
@@ -25,6 +27,7 @@ class NewsItem {
     required this.publishedAt,
     this.source = 'app',
     this.edited = false,
+    this.attachments = const [],
   });
 
   factory NewsItem.fromFirestore(DocumentSnapshot doc) {
@@ -41,6 +44,11 @@ class NewsItem {
       publishedAt: (data['publishedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       source: data['source'] as String? ?? 'app',
       edited: (data['edited'] as bool? ?? false) || (data['manuallyEdited'] as bool? ?? false),
+      attachments: (data['attachments'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .map((m) => UploadedFile.fromMap(Map<String, dynamic>.from(m)))
+          .where((f) => f.url.isNotEmpty)
+          .toList(),
     );
   }
 
@@ -54,6 +62,7 @@ class NewsItem {
       'imageUrl': imageUrl,
       'externalUrl': externalUrl,
       'publishedAt': Timestamp.fromDate(publishedAt),
+      'attachments': attachments.map((f) => f.toMap()).toList(),
     };
   }
 }

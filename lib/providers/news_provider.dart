@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/news_model.dart';
+import '../core/services/drive_upload_service.dart';
 import '../core/services/firestore_service.dart';
 
 class NewsProvider extends ChangeNotifier {
@@ -47,6 +48,7 @@ class NewsProvider extends ChangeNotifier {
     required String authorName,
     String? imageUrl,
     String? externalUrl,
+    List<UploadedFile> attachments = const [],
   }) async {
     final item = NewsItem(
       id: '',
@@ -57,6 +59,7 @@ class NewsProvider extends ChangeNotifier {
       authorName: authorName,
       imageUrl: imageUrl,
       externalUrl: externalUrl,
+      attachments: attachments,
       publishedAt: DateTime.now(),
     );
     await _firestoreService.addNews(item);
@@ -69,6 +72,7 @@ class NewsProvider extends ChangeNotifier {
     required String category,
     required bool isPinned,
     String? externalUrl,
+    List<UploadedFile> attachments = const [],
   }) async {
     await _firestoreService.editNews(
       id: id,
@@ -77,6 +81,7 @@ class NewsProvider extends ChangeNotifier {
       category: category,
       isPinned: isPinned,
       externalUrl: externalUrl,
+      attachments: attachments.map((f) => f.toMap()).toList(),
     );
   }
 

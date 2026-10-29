@@ -159,3 +159,7 @@ Setup (GitHub → Settings → Secrets and variables → Actions):
 3. Optional secrets: `TELEGRAM_CHAT_IDS` (comma separated allow-list) and `TELEGRAM_ONLY_ADMINS=true` (only messages sent by group admins become posts).
 
 Admins can edit any post from the app (pencil button on the post card).
+
+## File uploads (Google Drive, free)
+
+Announcements can carry attached files. Files are saved in your Google Drive through a free Apps Script web app: follow the setup steps at the top of `scripts/drive_upload.gs`, then paste the Web app URL in the app: Admin dashboard -> "إعداد رفع الملفات". Max 15 MB per file. Publish the updated `firestore.rules` (new `config` rule). Links inside a post open when tapped and the text can be selected/copied.
