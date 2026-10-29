@@ -264,51 +264,80 @@ class AdminDashboardScreen extends StatelessWidget {
   Future<void> _showUploadSetupDialog(BuildContext context) async {
     final controller = TextEditingController(text: await DriveUploadService.getEndpoint() ?? '');
     if (!context.mounted) return;
+    String? error;
+    var saving = false;
+
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('إعداد رفع الملفات'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'الصق رابط Web app الخاص بسكربت Google Drive (الخطوات في أعلى ملف '
-              'scripts/drive_upload.gs في المستودع).',
-              style: TextStyle(fontSize: 12.5),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                hintText: 'https://script.google.com/macros/s/.../exec',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('إعداد رفع الملفات'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'الصق رابط Web app الخاص بسكربت Google Drive (الخطوات في أعلى ملف '
+                'scripts/drive_upload.gs في المستودع).',
+                style: TextStyle(fontSize: 12.5),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  hintText: 'https://script.google.com/macros/s/.../exec',
+                ),
+              ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12.5)),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final url = controller.text.trim();
+                      if (url.isNotEmpty && !url.startsWith('https://script.google.com/')) {
+                        setState(() => error = 'الرابط يجب أن يبدأ بـ https://script.google.com/');
+                        return;
+                      }
+                      setState(() {
+                        saving = true;
+                        error = null;
+                      });
+                      try {
+                        await DriveUploadService.saveEndpoint(url)
+                            .timeout(const Duration(seconds: 15));
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم الحفظ'), backgroundColor: Colors.green),
+                          );
+                        }
+                      } catch (e) {
+                        final msg = e.toString();
+                        setState(() {
+                          saving = false;
+                          error = msg.contains('permission-denied')
+                              ? 'تم رفض الحفظ: انشر قواعد Firestore الجديدة (ملف firestore.rules) '
+                                  'من Firebase Console ثم أعد المحاولة، وتأكد أنك مسجّل بحساب أدمن.'
+                              : 'تعذر الحفظ: $msg';
+                        });
+                      }
+                    },
+              child: Text(saving ? 'جارٍ الحفظ...' : 'حفظ'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () async {
-              final url = controller.text.trim();
-              if (url.isNotEmpty && !url.startsWith('https://script.google.com/')) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('الرابط يجب أن يبدأ بـ https://script.google.com/')),
-                );
-                return;
-              }
-              await DriveUploadService.saveEndpoint(url);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم الحفظ')),
-                );
-              }
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
     controller.dispose();
