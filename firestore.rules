@@ -41,6 +41,21 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Files students send for approval. A student creates and reads only
+    // their own; admins review (update) all of them.
+    match /material_submissions/{subId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.submittedBy == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow read: if isAuthenticated()
+                  && (resource.data.submittedBy == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAdmin()
+                    || (isAuthenticated()
+                        && resource.data.submittedBy == request.auth.uid
+                        && resource.data.status == 'pending');
+    }
+
     // Address of the Google Drive upload script: signed-in users read it,
     // only admins change it.
     match /config/{docId} {

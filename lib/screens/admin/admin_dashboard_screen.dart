@@ -10,6 +10,9 @@ import '../../core/services/drive_upload_service.dart';
 import '../../models/quick_link_model.dart';
 import '../home/add_edit_news_dialog.dart';
 import '../materials/upload_material_screen.dart';
+import 'review_submissions_screen.dart';
+import '../../core/services/submission_service.dart';
+import '../../models/submission_model.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -169,6 +172,25 @@ class AdminDashboardScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   AppRoute.fadeSlide(const UploadMaterialScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
+            StreamBuilder<List<MaterialSubmission>>(
+              stream: SubmissionService.streamPending(),
+              builder: (context, snap) {
+                final n = snap.data?.length ?? 0;
+                return _buildActionTile(
+                  context,
+                  title: 'طلبات رفع الملفات من الطلاب',
+                  subtitle: n == 0 ? 'لا توجد طلبات الآن' : 'عدد الطلبات بانتظار المراجعة: $n',
+                  icon: Icons.fact_check_rounded,
+                  color: n == 0 ? Colors.grey.shade600 : Colors.orange.shade700,
+                  onTap: () => Navigator.push(
+                    context,
+                    AppRoute.fadeSlide(const ReviewSubmissionsScreen()),
+                  ),
                 );
               },
             ),

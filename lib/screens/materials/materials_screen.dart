@@ -10,6 +10,8 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/url_service.dart';
 import '../../widgets/custom_widgets.dart';
 import 'upload_material_screen.dart';
+import 'submit_material_screen.dart';
+import '../../models/user_model.dart';
 
 class MaterialsScreen extends StatelessWidget {
   const MaterialsScreen({super.key});
@@ -36,7 +38,24 @@ class MaterialsScreen extends StatelessWidget {
               label: const Text('إضافة مادة'),
               backgroundColor: AppColors.primary,
             )
-          : null,
+          : FloatingActionButton.extended(
+              onPressed: () {
+                final u = auth.user;
+                if (u == null || u.role == UserRole.guest) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('سجّل الدخول بحسابك لرفع ملف.')),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  AppRoute.fadeSlide(const SubmitMaterialScreen()),
+                );
+              },
+              icon: const Icon(Icons.volunteer_activism_rounded),
+              label: const Text('ساهم بملف'),
+              backgroundColor: AppColors.secondary,
+            ),
       body: Column(
         children: [
           // Filter & Search Header
