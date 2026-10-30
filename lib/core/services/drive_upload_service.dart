@@ -50,6 +50,9 @@ class DriveUploadService {
     'gif': 'image/gif',
     'zip': 'application/zip',
     'txt': 'text/plain',
+    'm4a': 'audio/mp4',
+    'aac': 'audio/aac',
+    'mp3': 'audio/mpeg',
   };
 
   static Future<String?> getEndpoint() async {

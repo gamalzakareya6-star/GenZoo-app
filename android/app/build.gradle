@@ -55,7 +55,7 @@ android {
 
     defaultConfig {
         applicationId "com.gamal.genzoo"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion Math.max(flutter.minSdkVersion, 23)
         targetSdk flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

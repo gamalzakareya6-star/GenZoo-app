@@ -180,8 +180,24 @@ service cloud.firestore {
                       && request.resource.data.uid == request.auth.uid
                       && request.resource.data.text.size() <= 1000
                       && request.resource.data.createdAt == request.time;
+        // The sender edits or "deletes for everyone"; any member may react
+        // or mark the message as seen (only adding themselves).
+        allow update: if isMember(campId)
+                      && ((resource.data.uid == request.auth.uid
+                           && request.resource.data.diff(resource.data).affectedKeys()
+                                .hasOnly(['text', 'edited', 'deleted', 'imageUrl', 'fileUrl', 'fileName', 'audioUrl'])
+                           && request.resource.data.text.size() <= 1000)
+                          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+                          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenBy'])
+                              && request.resource.data.seenBy.toSet().difference(resource.data.seenBy.toSet())
+                                   .hasOnly([request.auth.uid])));
         allow delete: if isMember(campId)
                       && (resource.data.uid == request.auth.uid || canManageCamp(campId));
+      }
+
+      match /typing/{tid} {
+        allow read: if isMember(campId);
+        allow write: if isMember(campId) && tid == request.auth.uid;
       }
 
       match /files/{fid} {
