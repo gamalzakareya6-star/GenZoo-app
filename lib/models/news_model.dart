@@ -14,6 +14,7 @@ class NewsItem {
   final String source; // 'app' or 'telegram'
   final bool edited;
   final List<UploadedFile> attachments;
+  final List<UploadedFile> images;
 
   NewsItem({
     required this.id,
@@ -28,6 +29,7 @@ class NewsItem {
     this.source = 'app',
     this.edited = false,
     this.attachments = const [],
+    this.images = const [],
   });
 
   factory NewsItem.fromFirestore(DocumentSnapshot doc) {
@@ -49,8 +51,19 @@ class NewsItem {
           .map((m) => UploadedFile.fromMap(Map<String, dynamic>.from(m)))
           .where((f) => f.url.isNotEmpty)
           .toList(),
+      images: (data['images'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .map((m) => UploadedFile.fromMap(Map<String, dynamic>.from(m)))
+          .where((f) => f.url.isNotEmpty)
+          .toList(),
     );
   }
+
+  /// Every picture of the post (uploaded images, plus the legacy single one).
+  List<String> get imageUrls => [
+        if (imageUrl != null && imageUrl!.isNotEmpty) imageUrl!,
+        ...images.map((i) => i.url),
+      ];
 
   Map<String, dynamic> toMap() {
     return {
@@ -63,6 +76,7 @@ class NewsItem {
       'externalUrl': externalUrl,
       'publishedAt': Timestamp.fromDate(publishedAt),
       'attachments': attachments.map((f) => f.toMap()).toList(),
+      'images': images.map((f) => f.toMap()).toList(),
     };
   }
 }

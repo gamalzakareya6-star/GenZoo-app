@@ -46,6 +46,8 @@ class DriveUploadService {
     'png': 'image/png',
     'jpg': 'image/jpeg',
     'jpeg': 'image/jpeg',
+    'webp': 'image/webp',
+    'gif': 'image/gif',
     'zip': 'application/zip',
     'txt': 'text/plain',
   };

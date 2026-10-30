@@ -10,6 +10,8 @@ import '../../core/services/url_service.dart';
 import '../../widgets/custom_widgets.dart';
 import 'add_edit_news_dialog.dart';
 import '../../widgets/linkified_text.dart';
+import '../../widgets/news_images.dart';
+import '../../widgets/comments_section.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -212,6 +214,10 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (item.imageUrls.isNotEmpty) ...[
+                NewsImageBanner(urls: item.imageUrls),
+                const SizedBox(height: 12),
+              ],
               // Header Tags (Pinned, Category, Date)
               Row(
                 children: [
@@ -297,6 +303,15 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => _showNewsDetailsModal(context, item),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
+                    label: const Text('تعليقات', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
                   if (item.externalUrl != null && item.externalUrl!.isNotEmpty)
                     TextButton.icon(
                       onPressed: () => UrlService.launchWebUrl(context, item.externalUrl!),
@@ -348,7 +363,7 @@ class HomeScreen extends StatelessWidget {
           expand: false,
           builder: (_, scrollController) {
             return Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
               child: ListView(
                 controller: scrollController,
                 children: [
@@ -378,6 +393,10 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text('نشره ${item.authorName}', style: TextStyle(color: Colors.grey.shade600)),
                   const Divider(height: 24),
+                  if (item.imageUrls.isNotEmpty) ...[
+                    NewsImageStrip(urls: item.imageUrls),
+                    const SizedBox(height: 14),
+                  ],
                   LinkifiedText(
                     item.content,
                     style: TextStyle(
@@ -415,6 +434,7 @@ class HomeScreen extends StatelessWidget {
                       label: const Text('فتح المرفق / الرابط الرسمي'),
                     ),
                   ],
+                  CommentsSection(newsId: item.id),
                 ],
               ),
             );

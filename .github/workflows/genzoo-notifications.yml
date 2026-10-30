@@ -43,9 +43,16 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
           TELEGRAM_ONLY_ADMINS: ${{ secrets.TELEGRAM_ONLY_ADMINS }}
+          GENZOO_UPLOAD_SECRET: ${{ secrets.GENZOO_UPLOAD_SECRET }}
         run: python scripts/telegram_sync.py
 
       - name: Send notifications for new posts
         env:
           GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
         run: python scripts/send_notifications.py
+
+      - name: Remove expired study camps
+        continue-on-error: true
+        env:
+          GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
+        run: python scripts/cleanup_camps.py

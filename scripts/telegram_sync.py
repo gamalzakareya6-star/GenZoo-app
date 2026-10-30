@@ -16,6 +16,12 @@ Rules
      a new one (and does not notify again);
   4. albums produce a single post (only the item that has the caption).
 - Posts that an admin edited inside the app are not overwritten.
+- Files: photos become the post's pictures, other files (PDF, Word, video,
+  audio...) become attachments. They are saved to Google Drive through the
+  Apps Script (scripts/drive_upload.gs) and linked in the post. Telegram bots
+  can download up to 20 MB and the script accepts up to 15 MB; larger files
+  stay in Telegram and the post links back to the message.
+- Albums (several photos/files sent together) become ONE post.
 
 Environment
   TELEGRAM_BOT_TOKEN           required (script exits quietly when missing)
@@ -23,7 +29,11 @@ Environment
   TELEGRAM_CHAT_IDS            optional, comma separated allow-list of chat ids
   TELEGRAM_ONLY_ADMINS         optional, "true" = only messages sent by group
                                admins (or the channel itself) become posts
+  GENZOO_UPLOAD_SECRET         optional, same value as UPLOAD_SECRET inside
+                               scripts/drive_upload.gs. Without it, files are
+                               not copied and the post links to Telegram.
 """
+import base64
 import datetime as dt
 import hashlib
 import json
@@ -58,6 +68,79 @@ def tg(token: str, method: str, **params):
     if not body.get("ok"):
         raise RuntimeError(f"Telegram {method} failed: {body.get('description')}")
     return body["result"]
+
+
+MAX_FILE_BYTES = 15 * 1024 * 1024
+FILE_KINDS = ("document", "video", "audio", "voice", "animation", "video_note")
+KIND_LABEL = {"document": "ملف", "video": "فيديو", "audio": "ملف صوتي", "voice": "رسالة صوتية",
+              "animation": "صورة متحركة", "video_note": "فيديو"}
+EXT_BY_MIME = {"video/mp4": "mp4", "audio/mpeg": "mp3", "audio/ogg": "ogg", "application/pdf": "pdf",
+               "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+
+def media_of(msg: dict) -> list:
+    """Files attached to a message: [{kind, file_id, name, mime, size, is_image}]."""
+    items = []
+    photos = msg.get("photo")
+    if photos:
+        best = photos[-1]  # the last size is the biggest
+        items.append({"kind": "photo", "file_id": best["file_id"], "name": f"photo_{msg['message_id']}.jpg",
+                      "mime": "image/jpeg", "size": best.get("file_size") or 0, "is_image": True})
+    for kind in FILE_KINDS:
+        f = msg.get(kind)
+        if not f:
+            continue
+        mime = f.get("mime_type") or "application/octet-stream"
+        name = f.get("file_name")
+        if not name:
+            ext = EXT_BY_MIME.get(mime, "bin")
+            name = f"{kind}_{msg['message_id']}.{ext}"
+        items.append({"kind": kind, "file_id": f["file_id"], "name": name, "mime": mime,
+                      "size": f.get("file_size") or 0, "is_image": mime.startswith("image/")})
+    return items
+
+
+def download_file(token: str, file_id: str) -> bytes:
+    info = tg(token, "getFile", file_id=file_id)
+    url = f"https://api.telegram.org/file/bot{token}/{info['file_path']}"
+    with urllib.request.urlopen(url, timeout=120) as r:
+        return r.read()
+
+
+def upload_to_drive(endpoint: str, secret: str, name: str, mime: str, data: bytes) -> dict:
+    payload = json.dumps({"secret": secret, "name": name, "mimeType": mime,
+                          "data": base64.b64encode(data).decode()}).encode()
+    req = urllib.request.Request(endpoint, data=payload, headers={"Content-Type": "text/plain;charset=utf-8"})
+    # Apps Script answers a POST with a redirect; urllib follows it with a GET.
+    with urllib.request.urlopen(req, timeout=180) as r:
+        body = json.load(r)
+    if not body.get("ok"):
+        raise RuntimeError(f"upload refused: {body.get('error')}")
+    return {"name": body.get("name", name), "url": body["url"], "size": body.get("size", len(data))}
+
+
+def save_media(token: str, endpoint, secret, msg: dict, link):
+    """Copies the message files to Drive. Returns (images, attachments, notes)."""
+    images, attachments, notes = [], [], []
+    for m in media_of(msg):
+        label = "صورة" if m["kind"] == "photo" else KIND_LABEL.get(m["kind"], "ملف")
+        if not endpoint or not secret:
+            notes.append(f"📎 {label}: {m['name']} (افتحه من تليجرام)")
+            continue
+        if m["size"] and m["size"] > MAX_FILE_BYTES:
+            notes.append(f"📎 {label} كبير الحجم: {m['name']} (افتحه من تليجرام)")
+            continue
+        try:
+            data = download_file(token, m["file_id"])
+            if len(data) > MAX_FILE_BYTES:
+                notes.append(f"📎 {label} كبير الحجم: {m['name']} (افتحه من تليجرام)")
+                continue
+            saved = upload_to_drive(endpoint, secret, m["name"], m["mime"], data)
+            (images if m["is_image"] else attachments).append(saved)
+        except Exception as exc:  # one failing file must not lose the whole post
+            print(f"File copy failed ({m['name']}): {exc}")
+            notes.append(f"📎 {label}: {m['name']} (تعذّر نسخه، افتحه من تليجرام)")
+    return images, attachments, notes
 
 
 def normalize(text: str) -> str:
@@ -111,6 +194,12 @@ def main() -> int:
         credentials.Certificate(service_data), options={"projectId": PROJECT_ID}
     )
     db = firestore.client(app=app)
+    upload_secret = os.environ.get("GENZOO_UPLOAD_SECRET", "").strip()
+    try:
+        upload_endpoint = ((db.collection("config").document("upload").get().to_dict() or {}).get("url") or "").strip()
+    except Exception as exc:
+        print(f"Could not read the upload address: {exc}")
+        upload_endpoint = ""
     state_ref = db.collection(STATE_DOC[0]).document(STATE_DOC[1])
     offset = int((state_ref.get().to_dict() or {}).get("offset", 0))
 
@@ -151,7 +240,8 @@ def main() -> int:
                 continue
             # Join/leave/pin/rename notices carry no text -> ignored here.
             text = (msg.get("text") or msg.get("caption") or "").strip()
-            if not text or text.startswith("/"):
+            has_media = bool(media_of(msg))
+            if (not text and not has_media) or text.startswith("/"):
                 skipped += 1
                 continue
             if (msg.get("from") or {}).get("is_bot"):
@@ -166,9 +256,32 @@ def main() -> int:
             ref = db.collection("news").document(doc_id)
             snap = ref.get()
 
+            gid = msg.get("media_group_id")
+            if not snap.exists and gid and not is_edit:
+                # Another file of an album that already became a post: add to it.
+                found = list(db.collection("news").where("telegramGroupId", "==", str(gid)).limit(1).stream())
+                if found:
+                    username = chat.get("username")
+                    link = f"https://t.me/{username}/{msg['message_id']}" if username else None
+                    imgs, atts, notes = save_media(token, upload_endpoint, upload_secret, msg, link)
+                    changes = {}
+                    if imgs:
+                        changes["images"] = firestore.ArrayUnion(imgs)
+                    if atts:
+                        changes["attachments"] = firestore.ArrayUnion(atts)
+                    prev = found[0].to_dict() or {}
+                    if text and (not prev.get("content") or prev.get("content", "").startswith("📎")):
+                        changes["content"] = text
+                    if changes:
+                        found[0].reference.update(changes)
+                        updated += 1
+                    else:
+                        skipped += 1
+                    continue
+
             if snap.exists:
                 existing = snap.to_dict() or {}
-                if is_edit and not existing.get("manuallyEdited") and existing.get("content") != text:
+                if is_edit and text and not existing.get("manuallyEdited") and existing.get("content") != text:
                     ref.update({"content": text, "edited": True,
                                 "editedAt": firestore.SERVER_TIMESTAMP})
                     updated += 1
@@ -181,24 +294,35 @@ def main() -> int:
                 continue
 
             # Same text posted again (another group, a repost, a forward).
-            digest = hashlib.sha256(normalize(text).encode()).hexdigest()[:40]
-            hash_ref = db.collection("telegram_hashes").document(digest)
-            try:
-                hash_ref.create({"newsId": doc_id, "createdAt": now})
-            except AlreadyExists:
-                prev = (hash_ref.get().to_dict() or {}).get("createdAt")
-                if prev and now - prev < DUPLICATE_WINDOW:
-                    print(f"Duplicate text skipped ({doc_id})")
-                    skipped += 1
-                    continue
-                hash_ref.set({"newsId": doc_id, "createdAt": now})
+            # Posts that carry files are never treated as duplicates.
+            if text and not has_media:
+                digest = hashlib.sha256(normalize(text).encode()).hexdigest()[:40]
+                hash_ref = db.collection("telegram_hashes").document(digest)
+                try:
+                    hash_ref.create({"newsId": doc_id, "createdAt": now})
+                except AlreadyExists:
+                    prev = (hash_ref.get().to_dict() or {}).get("createdAt")
+                    if prev and now - prev < DUPLICATE_WINDOW:
+                        print(f"Duplicate text skipped ({doc_id})")
+                        skipped += 1
+                        continue
+                    hash_ref.set({"newsId": doc_id, "createdAt": now})
 
             username = chat.get("username")
             link = f"https://t.me/{username}/{msg['message_id']}" if username else None
+            images, attachments, notes = save_media(token, upload_endpoint, upload_secret, msg, link)
+            body_text = text
+            if notes:
+                body_text = (text + "\n\n" if text else "") + "\n".join(notes)
+            if not body_text:
+                body_text = "📎 مرفقات جديدة من تليجرام"
             ref.set(
                 {
                     "title": str(chat.get("title") or "رسالة من تليجرام")[:100],
-                    "content": text,
+                    "content": body_text,
+                    "images": images,
+                    "attachments": attachments,
+                    "telegramGroupId": str(gid) if gid else None,
                     "category": "عام",
                     "isPinned": False,
                     "authorName": sender_name(msg),

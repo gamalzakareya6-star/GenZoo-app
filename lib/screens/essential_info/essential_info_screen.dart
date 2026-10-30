@@ -4,6 +4,10 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/services/url_service.dart';
 import '../../models/quick_link_model.dart';
+import 'package:provider/provider.dart';
+import '../../providers/feature_flags.dart';
+import '../camps/camps_screen.dart';
+import '../study/study_schedule_screen.dart';
 import 'gpa_calculator_screen.dart';
 
 class EssentialInfoScreen extends StatefulWidget {
@@ -20,7 +24,7 @@ class _EssentialInfoScreenState extends State<EssentialInfoScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -63,8 +67,9 @@ class _EssentialInfoScreenState extends State<EssentialInfoScreen> with SingleTi
                 unselectedLabelColor: Colors.grey.shade600,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 tabs: const [
-                  Tab(icon: Icon(Icons.public_rounded), text: 'الروابط والبوابات الرسمية'),
+                  Tab(icon: Icon(Icons.public_rounded), text: 'الروابط الرسمية'),
                   Tab(icon: Icon(Icons.calculate_rounded), text: 'حاسبة المعدل'),
+                  Tab(icon: Icon(Icons.auto_stories_rounded), text: 'أدوات المذاكرة'),
                 ],
               ),
             ),
@@ -170,7 +175,85 @@ class _EssentialInfoScreenState extends State<EssentialInfoScreen> with SingleTi
 
             // Tab 2: Embedded GPA Calculator
             const GpaCalculatorScreen(),
+            const _StudyToolsTab(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Study tools. Each tool shows "قريباً" until the admin switches it on.
+class _StudyToolsTab extends StatelessWidget {
+  const _StudyToolsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = context.watch<FeatureFlags>();
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _ToolCard(
+          icon: Icons.event_note_rounded,
+          color: AppColors.primary,
+          title: 'اقتراح الجدول الدراسي',
+          subtitle: 'جدول أسبوعي ذكي حسب موادك وامتحاناتك',
+          enabled: flags.isOn(FeatureFlags.studySchedule),
+          onOpen: () => Navigator.push(context, AppRoute.fadeSlide(const StudyScheduleScreen())),
+        ),
+        _ToolCard(
+          icon: Icons.local_fire_department_rounded,
+          color: AppColors.secondary,
+          title: 'معسكرات المذاكرة',
+          subtitle: 'ذاكر مع زملائك: مهام ومواعيد وتقدّم الجميع',
+          enabled: flags.isOn(FeatureFlags.studyCamps),
+          onOpen: () => Navigator.push(context, AppRoute.fadeSlide(const CampsScreen())),
+        ),
+      ],
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final bool enabled;
+  final VoidCallback onOpen;
+  const _ToolCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.enabled,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.65,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          onTap: enabled ? onOpen : null,
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text(subtitle),
+          trailing: enabled
+              ? const Icon(Icons.chevron_left_rounded)
+              : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                  child: const Text('قريباً', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
         ),
       ),
     );
