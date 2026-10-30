@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/painting.dart';
+import 'package:flutter/rendering.dart';
 
 /// Drawing/typing the user adds on top of a PDF page. Coordinates are
 /// normalized (0..1 of the page) so they stay correct at any zoom.
