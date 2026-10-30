@@ -44,6 +44,7 @@ dependencies:
   pdfx: ^2.9.2
   pdf: ^3.11.1
   file_picker: ^8.1.2
+  background_downloader: ^8.5.0
 
   # UI Enhancement Icons
   cupertino_icons: ^1.0.8

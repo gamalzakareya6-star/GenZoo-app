@@ -385,6 +385,12 @@ class _DownloadActions extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 12)),
+            IconButton(
+              tooltip: 'إلغاء التحميل',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              onPressed: () => context.read<DownloadsProvider>().cancelDownload(item.id),
+            ),
           ],
         ),
       );
@@ -426,23 +432,18 @@ class _DownloadActions extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: () async {
             final messenger = ScaffoldMessenger.of(context);
-            final ok = await context.read<DownloadsProvider>().download(item);
-            if (ok) {
-              provider.recordDownload(item.id);
-              messenger.showSnackBar(SnackBar(
-                content: Text('تم حفظ "${item.title}" للقراءة بدون إنترنت'),
-                backgroundColor: AppColors.secondary,
-              ));
-            } else {
-              final err = context.read<DownloadsProvider>().errorFor(item.id);
-              messenger.showSnackBar(SnackBar(
-                content: Text(err ?? 'تعذّر التحميل.'),
-                backgroundColor: AppColors.error,
-              ));
-            }
+            final dl = context.read<DownloadsProvider>();
+            final ok = await dl.download(item);
+            provider.recordDownload(item.id);
+            messenger.showSnackBar(SnackBar(
+              content: Text(ok
+                  ? 'بدأ التحميل في الخلفية، يمكنك مغادرة التطبيق.'
+                  : (dl.errorFor(item.id) ?? 'تعذّر التحميل.')),
+              backgroundColor: ok ? AppColors.secondary : AppColors.error,
+            ));
           },
           icon: const Icon(Icons.download_rounded, size: 16),
-          label: const Text('تحميل'),
+          label: Text(dl.errorFor(item.id) != null ? 'إعادة المحاولة' : 'تحميل'),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
