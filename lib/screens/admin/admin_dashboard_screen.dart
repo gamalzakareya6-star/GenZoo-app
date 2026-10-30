@@ -17,6 +17,8 @@ import '../../models/review_model.dart';
 import '../../core/services/review_service.dart';
 import '../../providers/feature_flags.dart';
 import 'review_moderation_screen.dart';
+import 'opinions_moderation_screen.dart';
+import '../../core/services/opinion_service.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -194,6 +196,25 @@ class AdminDashboardScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     AppRoute.fadeSlide(const ReviewSubmissionsScreen()),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
+            StreamBuilder<List<SubjectOpinion>>(
+              stream: OpinionService.streamPending(),
+              builder: (context, snap) {
+                final n = snap.data?.length ?? 0;
+                return _buildActionTile(
+                  context,
+                  title: 'آراء عن المواد (نصائح الطلاب)',
+                  subtitle: n == 0 ? 'لا توجد آراء بانتظار الموافقة' : 'بانتظار المراجعة: $n',
+                  icon: Icons.forum_rounded,
+                  color: n == 0 ? Colors.grey.shade600 : Colors.teal.shade700,
+                  onTap: () => Navigator.push(
+                    context,
+                    AppRoute.fadeSlide(const OpinionsModerationScreen()),
                   ),
                 );
               },

@@ -113,6 +113,25 @@ service cloud.firestore {
                     || (isAuthenticated() && resource.data.uid == request.auth.uid);
     }
 
+    // Opinions about subjects (written by name): public sees approved only.
+    match /subject_opinions/{oid} {
+      allow read: if resource.data.status == 'approved'
+                  || (isAuthenticated() && resource.data.uid == request.auth.uid)
+                  || isAdmin();
+      allow create: if isAuthenticated()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.subjectName.size() >= 1
+                    && request.resource.data.subjectName.size() <= 80
+                    && request.resource.data.opinion.size() >= 1
+                    && request.resource.data.opinion.size() <= 1500
+                    && request.resource.data.advice.size() <= 1000
+                    && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin();
+      allow delete: if isAdmin()
+                    || (isAuthenticated() && resource.data.uid == request.auth.uid);
+    }
+
     // Study camps.
     function isMember(campId) {
       return isAuthenticated() &&
