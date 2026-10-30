@@ -51,12 +51,12 @@ class DownloadsScreen extends StatelessWidget {
               children: [
                 if (downloads.isNotEmpty) ...[
                   const _Header('ملفات محمّلة'),
-                  for (final f in downloads) _FileTile(file: f),
+                  for (var i = 0; i < downloads.length; i++) FadeSlideIn(index: i, child: _FileTile(file: downloads[i])),
                 ],
                 if (exports.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const _Header('نسخ معدّلة'),
-                  for (final f in exports) _FileTile(file: f),
+                  for (var i = 0; i < exports.length; i++) FadeSlideIn(index: i, child: _FileTile(file: exports[i])),
                 ],
               ],
             ),

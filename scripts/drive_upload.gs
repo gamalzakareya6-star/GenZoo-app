@@ -23,12 +23,21 @@ var FOLDER_ID = 'PUT_YOUR_DRIVE_FOLDER_ID_HERE';
 // Public Firebase web API key of the app (it is already inside the APK).
 var FIREBASE_API_KEY = 'AIzaSyCyItoPA7NaBYck4-tdTMWvIvj6TIe8eG0';
 var MAX_BYTES = 15 * 1024 * 1024; // 15 MB per file
+// Lets the Telegram bot (GitHub Actions) save files without a Firebase login.
+// Put the same long random text here and in the GitHub secret
+// GENZOO_UPLOAD_SECRET. Leave the placeholder to disable this path.
+var UPLOAD_SECRET = 'PUT_A_LONG_RANDOM_SECRET_HERE';
 
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
 
-    var uid = verifyToken_(body.idToken);
+    var uid = null;
+    if (body.secret && UPLOAD_SECRET !== 'PUT_A_LONG_RANDOM_SECRET_HERE' && body.secret === UPLOAD_SECRET) {
+      uid = 'telegram-bot';
+    } else {
+      uid = verifyToken_(body.idToken);
+    }
     if (!uid) return json_({ ok: false, error: 'unauthorized' });
 
     var bytes = Utilities.base64Decode(body.data || '');

@@ -17,6 +17,8 @@ import 'providers/news_provider.dart';
 import 'providers/materials_provider.dart';
 import 'providers/gpa_provider.dart';
 import 'providers/downloads_provider.dart';
+import 'providers/review_stats_provider.dart';
+import 'providers/feature_flags.dart';
 import 'core/services/download_notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
@@ -104,6 +106,12 @@ class GenZooStudentPortalApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => DownloadsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ReviewStatsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FeatureFlags(),
         ),
         // Keeps the GPA calculator data separate for every account.
         ChangeNotifierProxyProvider<UserAuthProvider, GpaProvider>(

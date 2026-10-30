@@ -13,6 +13,10 @@ import '../materials/upload_material_screen.dart';
 import 'review_submissions_screen.dart';
 import '../../core/services/submission_service.dart';
 import '../../models/submission_model.dart';
+import '../../models/review_model.dart';
+import '../../core/services/review_service.dart';
+import '../../providers/feature_flags.dart';
+import 'review_moderation_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -193,6 +197,50 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 10),
+
+            StreamBuilder<List<MaterialReview>>(
+              stream: ReviewService.streamPending(),
+              builder: (context, snap) {
+                final n = snap.data?.length ?? 0;
+                return _buildActionTile(
+                  context,
+                  title: 'آراء الطلاب عن المواد',
+                  subtitle: n == 0 ? 'لا توجد آراء بانتظار الموافقة' : 'بانتظار المراجعة: $n',
+                  icon: Icons.rate_review_rounded,
+                  color: n == 0 ? Colors.grey.shade600 : Colors.amber.shade800,
+                  onTap: () => Navigator.push(
+                    context,
+                    AppRoute.fadeSlide(const ReviewModerationScreen()),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
+            Card(
+              child: Consumer<FeatureFlags>(
+                builder: (context, flags, _) => Column(
+                  children: [
+                    const ListTile(
+                      leading: Icon(Icons.rocket_launch_rounded),
+                      title: Text('الميزات القادمة'),
+                      subtitle: Text('جاهزة للعمل، مكتوب عليها "قريباً" للطلاب حتى تفعّلها'),
+                    ),
+                    SwitchListTile(
+                      title: const Text('اقتراح الجدول الدراسي'),
+                      value: flags.isOn(FeatureFlags.studySchedule),
+                      onChanged: (v) => FeatureFlags.set(FeatureFlags.studySchedule, v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('معسكرات المذاكرة'),
+                      value: flags.isOn(FeatureFlags.studyCamps),
+                      onChanged: (v) => FeatureFlags.set(FeatureFlags.studyCamps, v),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 10),
 

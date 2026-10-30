@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/news_model.dart';
 import '../../core/services/drive_upload_service.dart';
+import '../../core/utils/drive_link.dart';
 
 class AddEditNewsDialog extends StatefulWidget {
   /// When [item] is given the dialog edits that post instead of creating one.
@@ -28,7 +29,9 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
   bool _isSubmitting = false;
   bool _isUploading = false;
   final List<UploadedFile> _attachments = [];
+  final List<UploadedFile> _images = [];
   static const int _maxAttachments = 5;
+  static const int _maxImages = 8;
 
   bool get _isEditing => widget.item != null;
 
@@ -42,6 +45,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
       _linkController.text = item.externalUrl ?? '';
       _isPinned = item.isPinned;
       _attachments.addAll(item.attachments);
+      _images.addAll(item.images);
       _selectedCategory = AppConstants.newsCategories.contains(item.category)
           ? item.category
           : AppConstants.newsCategories.first;
@@ -82,6 +86,32 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
     if (mounted) setState(() => _isUploading = false);
   }
 
+  Future<void> _pickImages() async {
+    final remaining = _maxImages - _images.length;
+    if (remaining <= 0) return;
+
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true, type: FileType.image);
+    if (result == null || !mounted) return;
+
+    setState(() => _isUploading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    for (final f in result.files.take(remaining)) {
+      final path = f.path;
+      if (path == null) continue;
+      try {
+        final uploaded = await DriveUploadService.upload(path, displayName: f.name);
+        if (!mounted) return;
+        setState(() => _images.add(uploaded));
+      } catch (e) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('${f.name}: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
+    if (mounted) setState(() => _isUploading = false);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -100,6 +130,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
           isPinned: _isPinned,
           externalUrl: link,
           attachments: _attachments,
+          images: _images,
         );
       } else {
         await newsProvider.addNews(
@@ -110,6 +141,7 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
           authorName: user?.displayName ?? 'الإدارة',
           externalUrl: link,
           attachments: _attachments,
+          images: _images,
         );
       }
 
@@ -228,6 +260,59 @@ class _AddEditNewsDialogState extends State<AddEditNewsDialog> {
                     prefixIcon: Icon(Icons.link),
                   ),
                 ),
+                const SizedBox(height: 14),
+
+                // Pictures shown inside the post
+                Row(
+                  children: [
+                    const Icon(Icons.photo_library_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('الصور (${_images.length}/$_maxImages)',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: (_isUploading || _images.length >= _maxImages) ? null : _pickImages,
+                      icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                      label: const Text('إضافة صور'),
+                    ),
+                  ],
+                ),
+                if (_images.isNotEmpty)
+                  SizedBox(
+                    height: 78,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(top: 8),
+                      children: [
+                        for (final img in _images)
+                          Stack(
+                            children: [
+                              Container(
+                                width: 70,
+                                height: 70,
+                                margin: const EdgeInsets.only(left: 8),
+                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+                                clipBehavior: Clip.antiAlias,
+                                child: Image.network(driveImageUrl(img.url, width: 300), fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
+                              ),
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _images.remove(img)),
+                                  child: const CircleAvatar(
+                                    radius: 10,
+                                    backgroundColor: Colors.black54,
+                                    child: Icon(Icons.close, size: 12, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 14),
 
                 // Attachments (stored in Google Drive)

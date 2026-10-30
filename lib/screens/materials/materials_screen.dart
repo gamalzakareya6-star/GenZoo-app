@@ -15,6 +15,8 @@ import '../../models/user_model.dart';
 import '../../models/offline_file.dart';
 import '../../providers/downloads_provider.dart';
 import 'downloads_screen.dart';
+import 'material_reviews_sheet.dart';
+import '../../providers/review_stats_provider.dart';
 
 class MaterialsScreen extends StatelessWidget {
   const MaterialsScreen({super.key});
@@ -296,6 +298,25 @@ class MaterialsScreen extends StatelessWidget {
                 Text(
                   '${item.downloadCount} مشاهدة/تحميل',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(width: 10),
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => showMaterialReviews(context, item),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Builder(builder: (context) {
+                      final st = context.watch<ReviewStatsProvider>().statsFor(item.id);
+                      return Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF59E0B)),
+                        const SizedBox(width: 2),
+                        Text(
+                          st == null ? 'آراء' : '${st.avg.toStringAsFixed(1)} (${st.count})',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                        ),
+                      ]);
+                    }),
+                  ),
                 ),
                 const Spacer(),
                 if (isAdmin) ...[

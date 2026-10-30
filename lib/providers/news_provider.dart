@@ -49,6 +49,7 @@ class NewsProvider extends ChangeNotifier {
     String? imageUrl,
     String? externalUrl,
     List<UploadedFile> attachments = const [],
+    List<UploadedFile> images = const [],
   }) async {
     final item = NewsItem(
       id: '',
@@ -60,6 +61,7 @@ class NewsProvider extends ChangeNotifier {
       imageUrl: imageUrl,
       externalUrl: externalUrl,
       attachments: attachments,
+      images: images,
       publishedAt: DateTime.now(),
     );
     await _firestoreService.addNews(item);
@@ -73,6 +75,7 @@ class NewsProvider extends ChangeNotifier {
     required bool isPinned,
     String? externalUrl,
     List<UploadedFile> attachments = const [],
+    List<UploadedFile> images = const [],
   }) async {
     await _firestoreService.editNews(
       id: id,
@@ -82,6 +85,7 @@ class NewsProvider extends ChangeNotifier {
       isPinned: isPinned,
       externalUrl: externalUrl,
       attachments: attachments.map((f) => f.toMap()).toList(),
+      images: images.map((f) => f.toMap()).toList(),
     );
   }
 
