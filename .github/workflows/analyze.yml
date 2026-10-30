@@ -1,0 +1,54 @@
+name: Analyze
+
+# Fast check (about 2 minutes) that lists every Dart error at once.
+on:
+  push:
+    branches: [main, 'feature/**']
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+
+      - name: flutter pub get
+        shell: bash
+        run: |
+          if ! flutter pub get > pub_out.txt 2>&1; then
+            ERRS=$(head -c 3000 pub_out.txt | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=pub get failed::$ERRS"
+            exit 1
+          fi
+
+      - name: flutter analyze (errors only)
+        shell: bash
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze_out.txt 2>&1 || true
+          COUNT=0
+          while IFS= read -r line; do
+            # format:   error • message • path:line:col • rule
+            case "$line" in
+              *" error • "*)
+                COUNT=$((COUNT+1))
+                MSG=$(echo "$line" | awk -F' • ' '{print $2}')
+                LOC=$(echo "$line" | awk -F' • ' '{print $3}')
+                FILE=$(echo "$LOC" | cut -d: -f1)
+                LN=$(echo "$LOC" | cut -d: -f2)
+                echo "::error file=$FILE,line=$LN::$MSG"
+                ;;
+            esac
+          done < analyze_out.txt
+          tail -n 3 analyze_out.txt
+          if [ "$COUNT" -gt 0 ]; then echo "$COUNT error(s)"; exit 1; fi
