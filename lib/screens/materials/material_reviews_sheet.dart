@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/animations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -96,7 +97,7 @@ class _ReviewsSheet extends StatelessWidget {
               else if (list.isEmpty)
                 const Padding(padding: EdgeInsets.all(12), child: Text('لا توجد آراء منشورة بعد.'))
               else
-                for (final r in list) _ReviewTile(review: r),
+                for (var i = 0; i < list.length; i++) FadeSlideIn(index: i, child: _ReviewTile(review: list[i])),
             ],
           );
         },
@@ -162,34 +163,70 @@ class _MyReview extends StatelessWidget {
 
   Future<void> _openForm(BuildContext context, MaterialReview? existing) async {
     final text = TextEditingController(text: existing?.text ?? '');
+    final exam = TextEditingController(text: existing?.exam ?? '');
+    final tips = TextEditingController(text: existing?.tips ?? '');
     var rating = existing?.rating ?? 0;
+    var difficulty = existing?.difficulty ?? 0;
     final messenger = ScaffoldMessenger.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: const Text('رأيك في المادة'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 1; i <= 5; i++)
-                    IconButton(
-                      onPressed: () => setS(() => rating = i),
-                      icon: Icon(i <= rating ? Icons.star_rounded : Icons.star_outline_rounded, size: 34, color: const Color(0xFFF59E0B)),
-                    ),
-                ],
-              ),
-              TextField(
-                controller: text,
-                maxLength: ReviewService.maxLength,
-                maxLines: 4,
-                decoration: const InputDecoration(hintText: 'اكتب رأيك (جودة الملف، الفائدة، ملاحظات...)'),
-              ),
-              const Text('سيظهر رأيك بعد موافقة المشرف.', style: TextStyle(fontSize: 11.5)),
-            ],
+          title: const Text('تقييمك للمادة'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 1; i <= 5; i++)
+                      IconButton(
+                        onPressed: () => setS(() => rating = i),
+                        icon: Icon(i <= rating ? Icons.star_rounded : Icons.star_outline_rounded, size: 34, color: const Color(0xFFF59E0B)),
+                      ),
+                  ],
+                ),
+                const Text('مستوى الصعوبة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                SegmentedButton<int>(
+                  emptySelectionAllowed: true,
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 1, label: Text('سهلة')),
+                    ButtonSegment(value: 2, label: Text('متوسطة')),
+                    ButtonSegment(value: 3, label: Text('صعبة')),
+                  ],
+                  selected: difficulty == 0 ? <int>{} : {difficulty},
+                  onSelectionChanged: (v) => setS(() => difficulty = v.isEmpty ? 0 : v.first),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: text,
+                  maxLength: ReviewService.maxLength,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'رأيك في المادة',
+                    hintText: 'الشرح، جودة الملف، الدكتور، أي شيء يفيد زملاءك...',
+                  ),
+                ),
+                TextField(
+                  controller: exam,
+                  maxLength: ReviewService.maxDetail,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'شكل الامتحان (اختياري)'),
+                ),
+                TextField(
+                  controller: tips,
+                  maxLength: ReviewService.maxDetail,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'نصائح للمذاكرة (اختياري)'),
+                ),
+                const Text('سيظهر تقييمك بعد موافقة المشرف.', style: TextStyle(fontSize: 11.5)),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
@@ -210,11 +247,50 @@ class _MyReview extends StatelessWidget {
         userName: user.displayName,
         rating: rating,
         text: text.text,
+        exam: exam.text,
+        tips: tips.text,
+        difficulty: difficulty,
       );
-      messenger.showSnackBar(const SnackBar(content: Text('تم إرسال رأيك، سيظهر بعد موافقة المشرف.')));
+      messenger.showSnackBar(const SnackBar(content: Text('تم إرسال تقييمك، سيظهر بعد موافقة المشرف.')));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('تعذّر إرسال الرأي. حاول مرة أخرى.')));
+      messenger.showSnackBar(const SnackBar(content: Text('تعذّر الإرسال. حاول مرة أخرى.')));
     }
+  }
+}
+
+/// Details of a review (text, exam, tips, difficulty), shared by the public
+/// list and the admin moderation screen.
+class ReviewBody extends StatelessWidget {
+  final MaterialReview review;
+  const ReviewBody({super.key, required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget section(IconData icon, String title, String body) => Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(icon, size: 15, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+            ]),
+            const SizedBox(height: 2),
+            Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4)),
+          ]),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (review.difficulty > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Chip(
+            visualDensity: VisualDensity.compact,
+            label: Text('الصعوبة: ${['سهلة', 'متوسطة', 'صعبة'][review.difficulty - 1]}', style: const TextStyle(fontSize: 12)),
+          ),
+        ),
+      if (review.text.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(review.text, style: const TextStyle(fontSize: 13.5, height: 1.4))),
+      if (review.exam.isNotEmpty) section(Icons.quiz_rounded, 'شكل الامتحان', review.exam),
+      if (review.tips.isNotEmpty) section(Icons.lightbulb_rounded, 'نصائح', review.tips),
+    ]);
   }
 }
 
@@ -238,10 +314,7 @@ class _ReviewTile extends StatelessWidget {
             ]),
             const SizedBox(height: 4),
             Text(review.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-            if (review.text.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(review.text, style: const TextStyle(fontSize: 13.5, height: 1.4)),
-            ],
+            ReviewBody(review: review),
           ],
         ),
       ),

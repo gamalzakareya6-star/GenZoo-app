@@ -83,12 +83,18 @@ class CampFile {
   final String id;
   final String title;
   final String url;
+  final String kind; // link | upload | app
 
-  const CampFile({required this.id, required this.title, required this.url});
+  const CampFile({required this.id, required this.title, required this.url, this.kind = 'link'});
 
   factory CampFile.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>? ?? {};
-    return CampFile(id: doc.id, title: d['title'] as String? ?? 'ملف', url: d['url'] as String? ?? '');
+    return CampFile(
+      id: doc.id,
+      title: d['title'] as String? ?? 'ملف',
+      url: d['url'] as String? ?? '',
+      kind: d['kind'] as String? ?? 'link',
+    );
   }
 }
 
@@ -96,4 +102,41 @@ class CampMember {
   final String uid;
   final String name;
   const CampMember({required this.uid, required this.name});
+}
+
+class CampMessage {
+  final String id;
+  final String uid;
+  final String name;
+  final String text;
+  final String imageUrl;
+  final String fileName;
+  final String fileUrl;
+  final DateTime createdAt;
+
+  const CampMessage({
+    required this.id,
+    required this.uid,
+    required this.name,
+    required this.text,
+    required this.imageUrl,
+    required this.fileName,
+    required this.fileUrl,
+    required this.createdAt,
+  });
+
+  factory CampMessage.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>? ?? {};
+    return CampMessage(
+      id: doc.id,
+      uid: d['uid'] as String? ?? '',
+      name: d['name'] as String? ?? 'عضو',
+      text: d['text'] as String? ?? '',
+      imageUrl: d['imageUrl'] as String? ?? '',
+      fileName: d['fileName'] as String? ?? '',
+      fileUrl: d['fileUrl'] as String? ?? '',
+      // A message just sent has no server time yet: show it as "now".
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
 }

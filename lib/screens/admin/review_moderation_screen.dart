@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/animations.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/review_service.dart';
@@ -24,7 +25,7 @@ class ReviewModerationScreen extends StatelessWidget {
             itemCount: list.length,
             itemBuilder: (context, i) {
               final r = list[i];
-              return Card(
+              return FadeSlideIn(index: i, child: Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
@@ -34,10 +35,7 @@ class ReviewModerationScreen extends StatelessWidget {
                       Text(r.materialTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Row(children: [StarRow(value: r.rating.toDouble()), const SizedBox(width: 8), Text(r.userName, style: const TextStyle(fontSize: 12))]),
-                      if (r.text.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(r.text, style: const TextStyle(height: 1.4)),
-                      ],
+                      ReviewBody(review: r),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -58,7 +56,7 @@ class ReviewModerationScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-              );
+              ));
             },
           );
         },

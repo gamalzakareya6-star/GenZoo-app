@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/animations.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -30,7 +31,7 @@ class ReviewSubmissionsScreen extends StatelessWidget {
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
-            itemBuilder: (context, i) => _SubmissionCard(s: list[i], admin: admin),
+            itemBuilder: (context, i) => FadeSlideIn(index: i, child: _SubmissionCard(s: list[i], admin: admin)),
           );
         },
       ),

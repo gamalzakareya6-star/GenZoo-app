@@ -104,7 +104,9 @@ service cloud.firestore {
                     && request.resource.data.rating is int
                     && request.resource.data.rating >= 1
                     && request.resource.data.rating <= 5
-                    && request.resource.data.text.size() <= 600
+                    && request.resource.data.text.size() <= 2000
+                    && request.resource.data.get('exam', '').size() <= 1000
+                    && request.resource.data.get('tips', '').size() <= 1000
                     && rid == request.resource.data.materialId + '_' + request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin()
@@ -153,9 +155,20 @@ service cloud.firestore {
                           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneBy']));
       }
 
+      match /messages/{mid} {
+        allow read: if isMember(campId);
+        allow create: if isMember(campId)
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.text.size() <= 1000
+                      && request.resource.data.createdAt == request.time;
+        allow delete: if isMember(campId)
+                      && (resource.data.uid == request.auth.uid || canManageCamp(campId));
+      }
+
       match /files/{fid} {
         allow read: if isMember(campId);
-        allow write: if canManageCamp(campId);
+        allow create: if isMember(campId);
+        allow update, delete: if canManageCamp(campId);
       }
     }
 

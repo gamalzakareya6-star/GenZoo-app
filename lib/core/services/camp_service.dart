@@ -139,10 +139,11 @@ class CampService {
   static Future<void> deleteTask(String campId, String taskId) =>
       _camps.doc(campId).collection('tasks').doc(taskId).delete();
 
-  static Future<void> addFile(String campId, {required String title, required String url}) {
+  static Future<void> addFile(String campId, {required String title, required String url, String kind = 'link'}) {
     return _camps.doc(campId).collection('files').add({
       'title': title.trim(),
       'url': url.trim(),
+      'kind': kind,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -150,10 +151,41 @@ class CampService {
   static Future<void> deleteFile(String campId, String fileId) =>
       _camps.doc(campId).collection('files').doc(fileId).delete();
 
+  static Stream<List<CampMessage>> streamMessages(String campId) => _camps
+      .doc(campId)
+      .collection('messages')
+      .orderBy('createdAt', descending: true)
+      .limit(150)
+      .snapshots()
+      .map((s) => s.docs.map(CampMessage.fromFirestore).toList());
+
+  static Future<void> sendMessage(
+    String campId, {
+    required String uid,
+    required String name,
+    String text = '',
+    String imageUrl = '',
+    String fileName = '',
+    String fileUrl = '',
+  }) {
+    return _camps.doc(campId).collection('messages').add({
+      'uid': uid,
+      'name': name,
+      'text': text.trim(),
+      'imageUrl': imageUrl,
+      'fileName': fileName,
+      'fileUrl': fileUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> deleteMessage(String campId, String id) =>
+      _camps.doc(campId).collection('messages').doc(id).delete();
+
   /// Deletes the camp with everything inside it (owner only).
   static Future<void> deleteCamp(Camp camp) async {
     final ref = _camps.doc(camp.id);
-    for (final sub in ['tasks', 'files', 'members']) {
+    for (final sub in ['tasks', 'files', 'members', 'messages']) {
       final docs = await ref.collection(sub).get();
       for (var i = 0; i < docs.docs.length; i += 400) {
         final batch = _db.batch();

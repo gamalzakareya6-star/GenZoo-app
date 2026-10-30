@@ -34,7 +34,7 @@ def main() -> int:
     removed = 0
     for camp in db.collection("camps").where("deleteAfter", "<=", now).stream():
         info = camp.to_dict() or {}
-        for sub in ("tasks", "files", "members"):
+        for sub in ("tasks", "files", "members", "messages"):
             delete_collection(camp.reference.collection(sub))
         code = info.get("inviteCode")
         if code:

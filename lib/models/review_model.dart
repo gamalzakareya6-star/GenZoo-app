@@ -10,6 +10,9 @@ class MaterialReview {
   final String userName;
   final int rating; // 1..5
   final String text;
+  final String exam; // what the exam is like
+  final String tips; // advice for studying it
+  final int difficulty; // 0 = not given, 1..3
   final String status; // pending | approved | rejected
   final DateTime createdAt;
 
@@ -21,10 +24,14 @@ class MaterialReview {
     required this.userName,
     required this.rating,
     required this.text,
+    this.exam = '',
+    this.tips = '',
+    this.difficulty = 0,
     required this.status,
     required this.createdAt,
   });
 
+  bool get hasDetails => exam.isNotEmpty || tips.isNotEmpty || difficulty > 0;
   bool get isApproved => status == 'approved';
   bool get isPending => status == 'pending';
 
@@ -38,6 +45,9 @@ class MaterialReview {
       userName: d['userName'] as String? ?? 'طالب',
       rating: ((d['rating'] as num?)?.toInt() ?? 0).clamp(0, 5),
       text: d['text'] as String? ?? '',
+      exam: d['exam'] as String? ?? '',
+      tips: d['tips'] as String? ?? '',
+      difficulty: ((d['difficulty'] as num?)?.toInt() ?? 0).clamp(0, 3),
       status: d['status'] as String? ?? 'pending',
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );

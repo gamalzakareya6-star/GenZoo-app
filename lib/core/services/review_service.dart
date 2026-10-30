@@ -7,7 +7,8 @@ import '../../models/review_model.dart';
 class ReviewService {
   static final _db = FirebaseFirestore.instance;
   static const String collection = 'material_reviews';
-  static const int maxLength = 600;
+  static const int maxLength = 2000;
+  static const int maxDetail = 1000;
 
   static String docId(String materialId, String uid) => '${materialId}_$uid';
 
@@ -45,6 +46,9 @@ class ReviewService {
     required String userName,
     required int rating,
     required String text,
+    String exam = '',
+    String tips = '',
+    int difficulty = 0,
   }) {
     return _db.collection(collection).doc(docId(materialId, uid)).set({
       'materialId': materialId,
@@ -53,6 +57,9 @@ class ReviewService {
       'userName': userName,
       'rating': rating,
       'text': text.trim(),
+      'exam': exam.trim(),
+      'tips': tips.trim(),
+      'difficulty': difficulty,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
