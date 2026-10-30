@@ -6,12 +6,14 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/offline_file.dart';
 import '../../providers/downloads_provider.dart';
+import '../../providers/daily_provider.dart';
 import '../../widgets/animations.dart';
 import 'pdf_reader_screen.dart';
 
 /// Opens a saved file: PDFs in the in-app reader, other types in the
 /// matching app on the phone.
 Future<void> openOfflineFile(BuildContext context, OfflineFile f) async {
+  context.read<DailyProvider>().markStudied(context);
   if (f.isPdf) {
     await Navigator.push(context, AppRoute.fadeSlide(PdfReaderScreen(file: f)));
     return;

@@ -1,5 +1,6 @@
 import '../../widgets/animations.dart';
 import 'package:flutter/material.dart';
+import '../daily/daily_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/news_provider.dart';
@@ -90,6 +91,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SliverToBoxAdapter(child: DailyCard()),
             // Category Filter Pills
             SliverToBoxAdapter(
               child: SizedBox(
