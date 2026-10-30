@@ -45,7 +45,7 @@ dependencies:
   pdf: ^3.11.1
   file_picker: ^8.1.2
   background_downloader: ^8.5.0
-  record: ^5.1.2
+  record: ^6.0.0
   audioplayers: ^6.1.0
 
   # UI Enhancement Icons
