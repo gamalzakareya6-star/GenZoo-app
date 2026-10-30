@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/services/download_notification_service.dart';
 import '../core/utils/drive_link.dart';
 import '../models/material_model.dart';
 import '../models/offline_file.dart';
@@ -84,6 +85,8 @@ class DownloadsProvider extends ChangeNotifier {
     notifyListeners();
 
     final client = http.Client();
+    final notif = DownloadNotificationService();
+    final notifId = m.id.hashCode & 0x7FFFFFFF;
     File? tmp;
     try {
       final ext = _cleanExt(m.fileExtension);
@@ -116,6 +119,12 @@ class DownloadsProvider extends ChangeNotifier {
               lastReported = p;
               _progress[m.id] = p;
               notifyListeners();
+              unawaited(notif.showDownloadProgress(
+                id: notifId,
+                title: 'تحميل: ${m.title}',
+                progress: (p * 100).round(),
+                subText: m.subject,
+              ));
             }
           }
         }
@@ -144,8 +153,15 @@ class DownloadsProvider extends ChangeNotifier {
         savedAt: DateTime.now(),
       );
       await _save();
+      await notif.showDownloadCompleted(
+        id: notifId,
+        title: 'تم التحميل',
+        body: 'تم حفظ "${m.title}" ويمكنك فتحه بدون إنترنت',
+        filePath: target.path,
+      );
       return true;
     } catch (e) {
+      await notif.cancel(notifId);
       _errors[m.id] = e is TimeoutException ? 'انتهت مهلة الاتصال.' : '$e';
       try {
         if (tmp != null && await tmp.exists()) await tmp.delete();

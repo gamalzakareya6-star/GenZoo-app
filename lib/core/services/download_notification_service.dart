@@ -18,6 +18,8 @@ class DownloadNotificationService {
       MethodChannel('com.gamal.genzoo/installer');
 
   bool _initialized = false;
+  final Map<int, DateTime> _lastShown = {};
+  final Map<int, int> _lastPercent = {};
 
   static const String channelId = 'genzoo_downloads';
   static const String channelName = 'تحميلات وتحديثات GenZoo';
@@ -52,6 +54,12 @@ class DownloadNotificationService {
       );
 
       _initialized = true;
+
+      // Android 13+: notifications need a runtime permission.
+      await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
     } catch (e) {
       debugPrint('Failed to initialize local notifications: $e');
     }
@@ -66,6 +74,18 @@ class DownloadNotificationService {
     String? subText,
   }) async {
     if (!_initialized) await init();
+
+    // Notification updates are expensive: at most ~2 per second, and only
+    // when the percentage actually changed (the final 100% always goes out).
+    final now = DateTime.now();
+    final last = _lastShown[id];
+    if (progress < max &&
+        (_lastPercent[id] == progress ||
+            (last != null && now.difference(last).inMilliseconds < 500))) {
+      return;
+    }
+    _lastShown[id] = now;
+    _lastPercent[id] = progress;
 
     try {
       final safeProgress = progress.clamp(0, max);
@@ -107,6 +127,8 @@ class DownloadNotificationService {
     String? filePath,
   }) async {
     if (!_initialized) await init();
+    _lastShown.remove(id);
+    _lastPercent.remove(id);
 
     try {
       final AndroidNotificationDetails androidDetails =
@@ -138,6 +160,8 @@ class DownloadNotificationService {
 
   /// Cancel notification by id
   Future<void> cancel(int id) async {
+    _lastShown.remove(id);
+    _lastPercent.remove(id);
     try {
       await _notificationsPlugin.cancel(id);
     } catch (e) {

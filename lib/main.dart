@@ -16,6 +16,8 @@ import 'providers/auth_provider.dart';
 import 'providers/news_provider.dart';
 import 'providers/materials_provider.dart';
 import 'providers/gpa_provider.dart';
+import 'providers/downloads_provider.dart';
+import 'core/services/download_notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
 
@@ -64,6 +66,7 @@ Future<void> main() async {
 
 Future<void> _initializeNotifications() async {
   try {
+    await DownloadNotificationService().init();
     await NotificationService.init().timeout(
       const Duration(seconds: 12),
       onTimeout: () {
@@ -98,6 +101,9 @@ class GenZooStudentPortalApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => MaterialsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DownloadsProvider(),
         ),
         // Keeps the GPA calculator data separate for every account.
         ChangeNotifierProxyProvider<UserAuthProvider, GpaProvider>(

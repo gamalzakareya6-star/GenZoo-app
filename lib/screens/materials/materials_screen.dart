@@ -12,6 +12,9 @@ import '../../widgets/custom_widgets.dart';
 import 'upload_material_screen.dart';
 import 'submit_material_screen.dart';
 import '../../models/user_model.dart';
+import '../../models/offline_file.dart';
+import '../../providers/downloads_provider.dart';
+import 'downloads_screen.dart';
 
 class MaterialsScreen extends StatelessWidget {
   const MaterialsScreen({super.key});
@@ -65,15 +68,40 @@ class MaterialsScreen extends StatelessWidget {
             child: Column(
               children: [
                 // Search Field
-                TextField(
-                  onChanged: provider.setSearchQuery,
-                  decoration: InputDecoration(
-                    hintText: 'ابحث بالمادة أو العنوان أو كلمة...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    filled: true,
-                    fillColor: theme.cardColor,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: provider.setSearchQuery,
+                        decoration: InputDecoration(
+                          hintText: 'ابحث بالمادة أو العنوان أو كلمة...',
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          filled: true,
+                          fillColor: theme.cardColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'تحميلاتي (بدون إنترنت)',
+                      child: Material(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => Navigator.push(
+                            context,
+                            AppRoute.fadeSlide(const DownloadsScreen()),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(Icons.download_done_rounded, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
 
@@ -277,18 +305,7 @@ class MaterialsScreen extends StatelessWidget {
                     onPressed: () => _confirmDelete(context, item, provider),
                   ),
                 ],
-                ElevatedButton.icon(
-                  onPressed: () {
-                    provider.recordDownload(item.id);
-                    UrlService.launchWebUrl(context, item.fileUrl);
-                  },
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('فتح / تحميل'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
+                _DownloadActions(item: item, provider: provider),
               ],
             ),
           ],
@@ -317,6 +334,100 @@ class MaterialsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Download / open buttons of a material card: downloads it for offline use,
+/// shows progress, and opens the saved copy (or the online link).
+class _DownloadActions extends StatelessWidget {
+  final StudyMaterial item;
+  final MaterialsProvider provider;
+  const _DownloadActions({required this.item, required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final dl = context.watch<DownloadsProvider>();
+    final saved = dl.fileFor(item.id);
+    final progress = dl.progress(item.id);
+
+    if (progress != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(value: progress > 0 ? progress : null, strokeWidth: 2.5),
+            ),
+            const SizedBox(width: 8),
+            Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (saved != null) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.offline_pin_rounded, size: 18, color: AppColors.secondary),
+          const SizedBox(width: 6),
+          ElevatedButton.icon(
+            onPressed: () {
+              provider.recordDownload(item.id);
+              openOfflineFile(context, saved);
+            },
+            icon: const Icon(Icons.menu_book_rounded, size: 16),
+            label: const Text('فتح'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'فتح أونلاين',
+          icon: const Icon(Icons.open_in_new, size: 20),
+          onPressed: () {
+            provider.recordDownload(item.id);
+            UrlService.launchWebUrl(context, item.fileUrl);
+          },
+        ),
+        ElevatedButton.icon(
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final ok = await context.read<DownloadsProvider>().download(item);
+            if (ok) {
+              provider.recordDownload(item.id);
+              messenger.showSnackBar(SnackBar(
+                content: Text('تم حفظ "${item.title}" للقراءة بدون إنترنت'),
+                backgroundColor: AppColors.secondary,
+              ));
+            } else {
+              final err = context.read<DownloadsProvider>().errorFor(item.id);
+              messenger.showSnackBar(SnackBar(
+                content: Text(err ?? 'تعذّر التحميل.'),
+                backgroundColor: AppColors.error,
+              ));
+            }
+          },
+          icon: const Icon(Icons.download_rounded, size: 16),
+          label: const Text('تحميل'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }

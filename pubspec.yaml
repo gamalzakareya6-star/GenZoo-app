@@ -38,7 +38,6 @@ dependencies:
   flutter_compass: ^0.8.1
   package_info_plus: ^8.0.2
   open_filex: ^4.6.0
-  permission_handler: ^11.3.1
   flutter_local_notifications: ^18.0.1
   path_provider: ^2.1.5
   share_plus: ^10.1.4

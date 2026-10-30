@@ -247,8 +247,16 @@ class InstallPermissionGuideDialog extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
+              onPressed: () async {
+                final allowed =
+                    await DownloadNotificationService.canRequestPackageInstalls();
+                if (!allowed) {
+                  // Permission still missing: send the user to the switch
+                  // instead of letting Android silently refuse the install.
+                  await DownloadNotificationService.openInstallPermissionSettings();
+                  return;
+                }
+                if (context.mounted) Navigator.of(context).pop();
                 onInstallConfirmed();
               },
               icon: const Icon(Icons.system_update_rounded, size: 16),
