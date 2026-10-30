@@ -4,6 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/camp_model.dart';
 
+class PendingTask {
+  final Camp camp;
+  final CampTask task;
+  const PendingTask(this.camp, this.task);
+}
+
 class CampException implements Exception {
   final String message;
   CampException(this.message);
@@ -35,6 +41,23 @@ class CampService {
 
   static Stream<List<Camp>> streamPublic() =>
       _camps.where('isPublic', isEqualTo: true).snapshots().map(_sortedCamps);
+
+  /// Tasks the student has not done yet, across all of their camps.
+  static Future<List<PendingTask>> pendingTasks(String uid) async {
+    final camps = await _camps.where('memberIds', arrayContains: uid).get();
+    final out = <PendingTask>[];
+    for (final c in camps.docs.take(8)) {
+      final camp = Camp.fromFirestore(c);
+      if (camp.hasEnded) continue;
+      final tasks = await c.reference.collection('tasks').get();
+      for (final t in tasks.docs) {
+        final task = CampTask.fromFirestore(t);
+        if (!task.isDone(uid)) out.add(PendingTask(camp, task));
+      }
+    }
+    out.sort((a, b) => (a.task.deadline ?? DateTime(2100)).compareTo(b.task.deadline ?? DateTime(2100)));
+    return out;
+  }
 
   static Stream<Camp?> streamCamp(String id) =>
       _camps.doc(id).snapshots().map((d) => d.exists ? Camp.fromFirestore(d) : null);

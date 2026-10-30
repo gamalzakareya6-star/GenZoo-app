@@ -14,6 +14,7 @@ import 'submit_material_screen.dart';
 import '../../models/user_model.dart';
 import '../../models/offline_file.dart';
 import '../../providers/downloads_provider.dart';
+import '../../providers/daily_provider.dart';
 import 'downloads_screen.dart';
 import 'material_reviews_sheet.dart';
 import '../../providers/review_stats_provider.dart';
@@ -426,6 +427,7 @@ class _DownloadActions extends StatelessWidget {
           icon: const Icon(Icons.open_in_new, size: 20),
           onPressed: () {
             provider.recordDownload(item.id);
+            context.read<DailyProvider>().markStudied(context);
             UrlService.launchWebUrl(context, item.fileUrl);
           },
         ),

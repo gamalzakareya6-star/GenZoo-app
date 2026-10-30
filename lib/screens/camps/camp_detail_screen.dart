@@ -7,6 +7,8 @@ import '../../core/services/camp_service.dart';
 import '../../core/services/url_service.dart';
 import '../../models/camp_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/daily_provider.dart';
+import '../../core/data/motivation.dart';
 import '../../widgets/animations.dart';
 import 'camp_attach.dart';
 import 'camp_chat.dart';
@@ -307,7 +309,19 @@ class _Tasks extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: CheckboxListTile(
                     value: tasks[i].isDone(uid),
-                    onChanged: (v) => CampService.setDone(camp.id, tasks[i].id, uid, v == true),
+                    onChanged: (v) {
+                      CampService.setDone(camp.id, tasks[i].id, uid, v == true);
+                      if (v == true) {
+                        final daily = context.read<DailyProvider>();
+                        if (daily.studiedToday) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(Motivation.taskDoneMessage(i + DateTime.now().second))),
+                          );
+                        } else {
+                          daily.markStudied(context);
+                        }
+                      }
+                    },
                     title: Text(tasks[i].title,
                         style: TextStyle(decoration: tasks[i].isDone(uid) ? TextDecoration.lineThrough : null)),
                     subtitle: Text([

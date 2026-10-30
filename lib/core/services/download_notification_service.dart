@@ -17,6 +17,8 @@ class DownloadNotificationService {
   static const MethodChannel _installerChannel =
       MethodChannel('com.gamal.genzoo/installer');
 
+  FlutterLocalNotificationsPlugin get plugin => _notificationsPlugin;
+
   bool _initialized = false;
   final Map<int, DateTime> _lastShown = {};
   final Map<int, int> _lastPercent = {};
