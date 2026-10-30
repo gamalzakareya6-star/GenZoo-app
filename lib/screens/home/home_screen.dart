@@ -119,7 +119,8 @@ class HomeScreen extends StatelessWidget {
             // Content Feed
             if (newsProvider.isLoading)
               const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+                hasScrollBody: true,
+                child: FeedSkeleton(),
               )
             else if (newsProvider.filteredNews.isEmpty)
               SliverFillRemaining(
@@ -171,9 +172,16 @@ class HomeScreen extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final dateStr = DateFormat.yMMMd().format(item.publishedAt);
-    final isUrgent = item.category.toLowerCase() == 'urgent';
+    final isUrgent = item.category.toLowerCase() == 'urgent' || item.category == 'عاجل';
+    final isDark = theme.brightness == Brightness.dark;
+    final stripe = item.isPinned
+        ? AppColors.accent
+        : isUrgent
+            ? AppColors.error
+            : AppColors.primaryLight;
 
-    return Card(
+    return PressableScale(
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
@@ -183,14 +191,24 @@ class HomeScreen extends StatelessWidget {
               ? AppColors.accent.withOpacity(0.6)
               : isUrgent
                   ? AppColors.error.withOpacity(0.4)
-                  : AppColors.cardBorderLight,
+                  : (isDark ? AppColors.cardBorderDark : AppColors.cardBorderLight),
           width: item.isPinned || isUrgent ? 1.5 : 1,
         ),
       ),
       child: InkWell(
         onTap: () => _showNewsDetailsModal(context, item),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Stack(children: [
+          // Colored edge that tells the type of the post at a glance.
+          Positioned.directional(
+            textDirection: Directionality.of(context),
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            child: ColoredBox(color: stripe.withOpacity(0.85)),
+          ),
+          Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -309,7 +327,9 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+        ]),
       ),
+    ),
     );
   }
 

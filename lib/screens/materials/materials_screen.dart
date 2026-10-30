@@ -132,7 +132,7 @@ class MaterialsScreen extends StatelessWidget {
           // Materials Feed
           Expanded(
             child: provider.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const FeedSkeleton()
                 : provider.filteredMaterials.isEmpty
                     ? EmptyStateView(
                         icon: Icons.folder_open_rounded,

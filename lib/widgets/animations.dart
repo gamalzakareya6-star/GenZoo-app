@@ -164,3 +164,121 @@ class AppRoute {
     );
   }
 }
+
+/// Shrinks its child slightly while pressed and springs back on release.
+/// It only reacts visually; taps are handled by the child (InkWell, buttons).
+class PressableScale extends StatefulWidget {
+  final Widget child;
+  final double pressedScale;
+  const PressableScale({super.key, required this.child, this.pressedScale = 0.97});
+
+  @override
+  State<PressableScale> createState() => _PressableScaleState();
+}
+
+class _PressableScaleState extends State<PressableScale> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down ? widget.pressedScale : 1,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// A grey block with a moving highlight, used as a loading placeholder.
+class SkeletonBox extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double radius;
+  const SkeletonBox({super.key, this.width, required this.height, this.radius = 10});
+
+  @override
+  State<SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1300))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final base = dark ? const Color(0xFF273449) : const Color(0xFFE2E8F0);
+    final shine = dark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final t = _c.value * 3 - 1; // sweeps from -1 to 2
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment(t - 1, 0),
+              end: Alignment(t, 0),
+              colors: [base, shine, base],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Placeholder cards shown while a feed is loading.
+class FeedSkeleton extends StatelessWidget {
+  final int count;
+  const FeedSkeleton({super.key, this.count = 4});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: count,
+      itemBuilder: (_, i) => Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                SkeletonBox(width: 60, height: 18, radius: 6),
+                SizedBox(width: 8),
+                SkeletonBox(width: 80, height: 18, radius: 6),
+              ]),
+              SizedBox(height: 14),
+              SkeletonBox(height: 16),
+              SizedBox(height: 8),
+              SkeletonBox(width: 220, height: 12),
+              SizedBox(height: 6),
+              SkeletonBox(width: 160, height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
