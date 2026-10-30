@@ -3,7 +3,7 @@ name: Analyze
 # Fast check (about 2 minutes) that lists every Dart error at once.
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/**']
     paths:
       - 'lib/**'
       - 'pubspec.yaml'
