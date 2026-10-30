@@ -72,6 +72,7 @@ class DailyNotifications {
             ),
           ),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         );
       }
     } catch (e) {
