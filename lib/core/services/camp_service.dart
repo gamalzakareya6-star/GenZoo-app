@@ -167,6 +167,9 @@ class CampService {
     String imageUrl = '',
     String fileName = '',
     String fileUrl = '',
+    String audioUrl = '',
+    int audioSecs = 0,
+    Map<String, dynamic>? replyTo,
   }) {
     return _camps.doc(campId).collection('messages').add({
       'uid': uid,
@@ -175,17 +178,67 @@ class CampService {
       'imageUrl': imageUrl,
       'fileName': fileName,
       'fileUrl': fileUrl,
+      'audioUrl': audioUrl,
+      'audioSecs': audioSecs,
+      'reactions': <String, String>{},
+      'seenBy': [uid],
+      if (replyTo != null) 'replyTo': replyTo,
+      'edited': false,
+      'deleted': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  static Future<void> deleteMessage(String campId, String id) =>
-      _camps.doc(campId).collection('messages').doc(id).delete();
+  static DocumentReference<Map<String, dynamic>> _msg(String campId, String id) =>
+      _camps.doc(campId).collection('messages').doc(id);
+
+  static Future<void> editMessage(String campId, String id, String text) =>
+      _msg(campId, id).update({'text': text.trim(), 'edited': true});
+
+  /// "Delete for everyone": the message stays as a tombstone, content removed.
+  static Future<void> deleteForEveryone(String campId, String id) => _msg(campId, id).update({
+        'deleted': true,
+        'text': '',
+        'imageUrl': '',
+        'fileUrl': '',
+        'fileName': '',
+        'audioUrl': '',
+      });
+
+  static Future<void> toggleReaction(String campId, String id, String uid, String emoji, String? current) {
+    return _msg(campId, id).update({
+      'reactions.$uid': current == emoji ? FieldValue.delete() : emoji,
+    });
+  }
+
+  static Future<void> markSeen(String campId, List<String> ids, String uid) async {
+    for (final id in ids) {
+      try {
+        await _msg(campId, id).update({'seenBy': FieldValue.arrayUnion([uid])});
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> deleteMessage(String campId, String id) => _msg(campId, id).delete();
+
+  static Future<void> setTyping(String campId, String uid, String name, bool typing) {
+    final ref = _camps.doc(campId).collection('typing').doc(uid);
+    return typing ? ref.set({'name': name, 'at': FieldValue.serverTimestamp()}) : ref.delete();
+  }
+
+  static Stream<List<CampTyping>> streamTyping(String campId) =>
+      _camps.doc(campId).collection('typing').snapshots().map((s) => s.docs
+          .map((d) => CampTyping(
+                uid: d.id,
+                name: d.data()['name'] as String? ?? '',
+                at: (d.data()['at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              ))
+          .toList());
 
   /// Deletes the camp with everything inside it (owner only).
   static Future<void> deleteCamp(Camp camp) async {
     final ref = _camps.doc(camp.id);
-    for (final sub in ['tasks', 'files', 'members', 'messages']) {
+    for (final sub in ['tasks', 'files', 'members', 'messages', 'typing']) {
       final docs = await ref.collection(sub).get();
       for (var i = 0; i < docs.docs.length; i += 400) {
         final batch = _db.batch();

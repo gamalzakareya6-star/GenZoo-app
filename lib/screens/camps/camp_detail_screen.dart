@@ -7,10 +7,9 @@ import '../../core/services/camp_service.dart';
 import '../../core/services/url_service.dart';
 import '../../models/camp_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../core/utils/drive_link.dart';
 import '../../widgets/animations.dart';
-import '../../widgets/news_images.dart' show openImageViewer;
 import 'camp_attach.dart';
+import 'camp_chat.dart';
 import 'camps_screen.dart' show fmtDate;
 
 class CampDetailScreen extends StatelessWidget {
@@ -137,7 +136,7 @@ class _MemberView extends StatelessWidget {
           FadeSlideIn(offsetY: -12, child: _Header(camp: camp)),
           Expanded(
             child: TabBarView(children: [
-              _Chat(camp: camp, uid: uid, name: name, manage: _manage),
+              CampChat(camp: camp, uid: uid, name: name, manage: _manage),
               _Tasks(camp: camp, uid: uid, manage: _manage),
               _Files(camp: camp, manage: _manage),
               _Members(camp: camp),
@@ -224,218 +223,6 @@ class _Header extends StatelessWidget {
           Text(camp.description, style: const TextStyle(color: Colors.white, fontSize: 12.5)),
         ],
       ]),
-    );
-  }
-}
-
-class _Chat extends StatefulWidget {
-  final Camp camp;
-  final String uid;
-  final String name;
-  final bool manage;
-  const _Chat({required this.camp, required this.uid, required this.name, required this.manage});
-
-  @override
-  State<_Chat> createState() => _ChatState();
-}
-
-class _ChatState extends State<_Chat> with AutomaticKeepAliveClientMixin {
-  final _ctrl = TextEditingController();
-  bool _busy = false;
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send({String imageUrl = '', String fileName = '', String fileUrl = ''}) async {
-    final text = _ctrl.text;
-    if (text.trim().isEmpty && imageUrl.isEmpty && fileUrl.isEmpty) return;
-    _ctrl.clear();
-    try {
-      await CampService.sendMessage(widget.camp.id,
-          uid: widget.uid, name: widget.name, text: text, imageUrl: imageUrl, fileName: fileName, fileUrl: fileUrl);
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذّر إرسال الرسالة.')));
-    }
-  }
-
-  Future<void> _attach() async {
-    final choice = await showAttachMenu(context);
-    if (choice == null || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      switch (choice) {
-        case AttachChoice.image:
-          final f = await pickAndUpload(context, image: true);
-          if (f != null) await _send(imageUrl: f.url);
-        case AttachChoice.device:
-          final f = await pickAndUpload(context, image: false);
-          if (f != null) await _send(fileName: f.name, fileUrl: f.url);
-        case AttachChoice.app:
-          final m = await pickAppMaterial(context);
-          if (m != null) await _send(fileName: m.title, fileUrl: m.fileUrl);
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Column(children: [
-      Expanded(
-        child: StreamBuilder<List<CampMessage>>(
-          stream: CampService.streamMessages(widget.camp.id),
-          builder: (context, snap) {
-            if (snap.hasError) return const Center(child: Text('تعذّر تحميل المحادثة.'));
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-            final msgs = snap.data!;
-            if (msgs.isEmpty) {
-              return const Center(child: Text('ابدأ المحادثة مع زملائك 👋'));
-            }
-            return ListView.builder(
-              reverse: true,
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              itemCount: msgs.length,
-              itemBuilder: (_, i) {
-                final m = msgs[i];
-                return FadeSlideIn(
-                  key: ValueKey(m.id),
-                  duration: const Duration(milliseconds: 280),
-                  offsetY: 12,
-                  child: _Bubble(
-                    msg: m,
-                    mine: m.uid == widget.uid,
-                    onDelete: (m.uid == widget.uid || widget.manage)
-                        ? () => CampService.deleteMessage(widget.camp.id, m.id)
-                        : null,
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ),
-      if (_busy) const LinearProgressIndicator(minHeight: 2),
-      SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-          child: Row(children: [
-            IconButton(onPressed: _busy ? null : _attach, icon: const Icon(Icons.attach_file_rounded)),
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                minLines: 1,
-                maxLines: 4,
-                maxLength: 1000,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: 'اكتب رسالة...',
-                  isDense: true,
-                  filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            PressableScale(
-              child: IconButton.filled(onPressed: _send, icon: const Icon(Icons.send_rounded)),
-            ),
-          ]),
-        ),
-      ),
-    ]);
-  }
-}
-
-class _Bubble extends StatelessWidget {
-  final CampMessage msg;
-  final bool mine;
-  final VoidCallback? onDelete;
-  const _Bubble({required this.msg, required this.mine, this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = mine ? AppColors.primary : scheme.surfaceContainerHighest;
-    final fg = mine ? Colors.white : scheme.onSurface;
-    final t = msg.createdAt;
-    final time = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    return Align(
-      alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
-      child: GestureDetector(
-        onLongPress: onDelete == null
-            ? null
-            : () async {
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('حذف الرسالة؟'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
-                    ],
-                  ),
-                );
-                if (ok == true) onDelete!();
-              },
-        child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            if (!mine)
-              Text(msg.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.secondary)),
-            if (msg.imageUrl.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: GestureDetector(
-                  onTap: () => openImageViewer(context, [msg.imageUrl], 0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      driveImageUrl(msg.imageUrl, width: 600),
-                      height: 180,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (_, child, p) => p == null ? child : const SizedBox(height: 180, child: Center(child: CircularProgressIndicator())),
-                      errorBuilder: (_, __, ___) => const SizedBox(height: 80, child: Center(child: Icon(Icons.broken_image_rounded))),
-                    ),
-                  ),
-                ),
-              ),
-            if (msg.fileUrl.isNotEmpty)
-              InkWell(
-                onTap: () => UrlService.launchWebUrl(context, msg.fileUrl),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.insert_drive_file_rounded, color: fg, size: 20),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(msg.fileName.isEmpty ? 'ملف' : msg.fileName,
-                          style: TextStyle(color: fg, decoration: TextDecoration.underline)),
-                    ),
-                  ]),
-                ),
-              ),
-            if (msg.text.isNotEmpty) Text(msg.text, style: TextStyle(color: fg, height: 1.35)),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Text(time, style: TextStyle(color: fg.withOpacity(0.6), fontSize: 10)),
-            ),
-          ]),
-        ),
-      ),
     );
   }
 }

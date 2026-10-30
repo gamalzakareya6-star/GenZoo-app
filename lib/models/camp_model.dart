@@ -112,6 +112,13 @@ class CampMessage {
   final String imageUrl;
   final String fileName;
   final String fileUrl;
+  final String audioUrl;
+  final int audioSecs;
+  final Map<String, String> reactions; // uid -> emoji
+  final List<String> seenBy;
+  final Map<String, dynamic>? replyTo; // {id, name, text}
+  final bool edited;
+  final bool deleted;
   final DateTime createdAt;
 
   const CampMessage({
@@ -122,11 +129,19 @@ class CampMessage {
     required this.imageUrl,
     required this.fileName,
     required this.fileUrl,
+    required this.audioUrl,
+    required this.audioSecs,
+    required this.reactions,
+    required this.seenBy,
+    required this.replyTo,
+    required this.edited,
+    required this.deleted,
     required this.createdAt,
   });
 
   factory CampMessage.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>? ?? {};
+    final r = d['reactions'];
     return CampMessage(
       id: doc.id,
       uid: d['uid'] as String? ?? '',
@@ -135,8 +150,22 @@ class CampMessage {
       imageUrl: d['imageUrl'] as String? ?? '',
       fileName: d['fileName'] as String? ?? '',
       fileUrl: d['fileUrl'] as String? ?? '',
+      audioUrl: d['audioUrl'] as String? ?? '',
+      audioSecs: (d['audioSecs'] as num?)?.toInt() ?? 0,
+      reactions: r is Map ? {for (final e in r.entries) '${e.key}': '${e.value}'} : const {},
+      seenBy: (d['seenBy'] as List<dynamic>? ?? []).whereType<String>().toList(),
+      replyTo: d['replyTo'] is Map ? Map<String, dynamic>.from(d['replyTo'] as Map) : null,
+      edited: d['edited'] as bool? ?? false,
+      deleted: d['deleted'] as bool? ?? false,
       // A message just sent has no server time yet: show it as "now".
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
+}
+
+class CampTyping {
+  final String uid;
+  final String name;
+  final DateTime at;
+  const CampTyping({required this.uid, required this.name, required this.at});
 }
