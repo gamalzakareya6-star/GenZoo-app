@@ -117,7 +117,8 @@ jobs:
           set -o pipefail
           if ! shorebird release android --artifact apk -- --build-number=${{ github.run_number }} > build_out.txt 2>&1; then
             tail -n 60 build_out.txt
-            ERRS=$(tail -n 40 build_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            ERRS=$(grep -E "What went wrong|Execution failed|Could not|error:|Error:|e: " -A10 build_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
+            [ -z "$ERRS" ] && ERRS=$(tail -n 40 build_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
             echo "::error title=Shorebird release failed::$ERRS"
             exit 1
           fi
