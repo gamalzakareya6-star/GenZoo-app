@@ -3,11 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:background_downloader/background_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/services/download_notification_service.dart';
 import '../core/utils/drive_link.dart';
 import '../models/material_model.dart';
 import '../models/offline_file.dart';
@@ -24,6 +23,7 @@ class DownloadsProvider extends ChangeNotifier {
 
   DownloadsProvider() {
     _load();
+    _initDownloader();
   }
 
   List<OfflineFile> get items {
@@ -77,101 +77,178 @@ class DownloadsProvider extends ChangeNotifier {
     return d;
   }
 
-  /// Downloads a material for offline use. Returns true on success.
+  // ---- Background downloads (survive leaving the app or closing it) ----
+
+  static const _group = 'materials';
+  bool _downloaderReady = false;
+
+  Future<void> _initDownloader() async {
+    if (_downloaderReady) return;
+    _downloaderReady = true;
+    try {
+      final d = FileDownloader();
+      d.configureNotificationForGroup(
+        _group,
+        running: const TaskNotification('جارٍ التحميل', '{displayName}'),
+        complete: const TaskNotification('تم التحميل', '{displayName} جاهز للقراءة بدون إنترنت'),
+        error: const TaskNotification('تعذّر التحميل', '{displayName}'),
+        paused: const TaskNotification('التحميل متوقف مؤقتاً', '{displayName}'),
+        progressBar: true,
+      );
+      d.updates.listen(_onUpdate);
+      await d.trackTasks();
+      // Delivers updates that happened while the app was closed.
+      await d.resumeFromBackground();
+    } catch (e) {
+      debugPrint('Background downloader could not start: $e');
+    }
+  }
+
+  static String _taskId(String materialId) => 'dl_$materialId';
+
+  Future<void> _onUpdate(TaskUpdate update) async {
+    final task = update.task;
+    if (task.group != _group) return;
+    Map<String, dynamic> meta;
+    try {
+      meta = Map<String, dynamic>.from(jsonDecode(task.metaData) as Map);
+    } catch (_) {
+      return;
+    }
+    final id = meta['id'] as String? ?? '';
+    if (id.isEmpty) return;
+
+    if (update is TaskProgressUpdate) {
+      if (update.progress >= 0 && update.progress < 1) {
+        _progress[id] = update.progress;
+        notifyListeners();
+      }
+      return;
+    }
+    if (update is! TaskStatusUpdate) return;
+
+    switch (update.status) {
+      case TaskStatus.complete:
+        try {
+          await _finalize(task, meta);
+          _errors.remove(id);
+        } catch (e) {
+          _errors[id] = '$e';
+        }
+        _progress.remove(id);
+      case TaskStatus.failed:
+      case TaskStatus.notFound:
+        _errors[id] = update.status == TaskStatus.notFound
+            ? 'الملف غير موجود على الرابط.'
+            : (update.exception?.description ?? 'تعذّر التحميل.');
+        _progress.remove(id);
+        await _deletePartial(task);
+      case TaskStatus.canceled:
+        _progress.remove(id);
+        await _deletePartial(task);
+      default:
+        break; // enqueued / running / paused / waitingToRetry
+    }
+    notifyListeners();
+  }
+
+  Future<void> _deletePartial(Task task) async {
+    try {
+      final f = File(await task.filePath());
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
+  }
+
+  /// Validates the downloaded file and adds it to the offline library.
+  Future<void> _finalize(Task task, Map<String, dynamic> meta) async {
+    final path = await task.filePath();
+    final file = File(path);
+    if (!await file.exists()) throw 'تعذّر حفظ الملف.';
+    final size = await file.length();
+    if (size == 0) {
+      await file.delete();
+      throw 'الملف فارغ.';
+    }
+    final ext = meta['ext'] as String? ?? 'bin';
+    final head = await file.openRead(0, 5).fold<List<int>>([], (a, b) => a..addAll(b));
+    final headStr = String.fromCharCodes(head);
+    if (ext == 'pdf' && !headStr.startsWith('%PDF')) {
+      await file.delete();
+      throw 'الملف المُحمَّل ليس PDF صالحاً. تأكد من مشاركة الرابط للجميع.';
+    }
+    if (ext != 'pdf' && headStr.toLowerCase().contains('<')) {
+      // An HTML page (Drive sign-in / virus-scan page) instead of the file.
+      final text = await file.openRead(0, 300).transform(utf8.decoder).join().catchError((_) => '');
+      if (text.toLowerCase().contains('<html') || text.toLowerCase().contains('<!doctype')) {
+        await file.delete();
+        throw 'هذا الرابط لا يدعم التحميل المباشر. افتحه من المتصفح.';
+      }
+    }
+    final id = meta['id'] as String;
+    _files[id] = OfflineFile(
+      id: id,
+      title: meta['title'] as String? ?? '',
+      subject: meta['subject'] as String? ?? '',
+      department: meta['department'] as String? ?? '',
+      ext: ext,
+      path: path,
+      size: size,
+      savedAt: DateTime.now(),
+    );
+    await _save();
+  }
+
+  /// Starts a download that keeps running in the background. Returns true
+  /// when it was queued; the result arrives through [progress], [fileFor]
+  /// and [errorFor], and as a notification.
   Future<bool> download(StudyMaterial m) async {
     if (_progress.containsKey(m.id)) return false; // already running
     _errors.remove(m.id);
-    _progress[m.id] = 0;
-    notifyListeners();
-
-    final client = http.Client();
-    final notif = DownloadNotificationService();
-    final notifId = m.id.hashCode & 0x7FFFFFFF;
-    File? tmp;
+    await _initDownloader();
     try {
       final ext = _cleanExt(m.fileExtension);
       final dir = await _dir('materials');
       final target = File('${dir.path}/${m.id}.$ext');
-      tmp = File('${target.path}.part');
-
-      final res = await client
-          .send(http.Request('GET', Uri.parse(directDownloadUrl(m.fileUrl))))
-          .timeout(const Duration(seconds: 30));
-      if (res.statusCode != 200) {
-        throw 'تعذّر التحميل (رمز ${res.statusCode}).';
-      }
-      final type = (res.headers['content-type'] ?? '').toLowerCase();
-      if (type.contains('text/html')) {
-        throw 'هذا الرابط لا يدعم التحميل المباشر. افتحه من المتصفح.';
-      }
-
-      final total = res.contentLength ?? 0;
-      var received = 0;
-      var lastReported = 0.0;
-      final sink = tmp.openWrite();
-      try {
-        await for (final chunk in res.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (total > 0) {
-            final p = received / total;
-            if (p - lastReported >= 0.02) {
-              lastReported = p;
-              _progress[m.id] = p;
-              notifyListeners();
-              unawaited(notif.showDownloadProgress(
-                id: notifId,
-                title: 'تحميل: ${m.title}',
-                progress: (p * 100).round(),
-                subText: m.subject,
-              ));
-            }
-          }
-        }
-      } finally {
-        await sink.close();
-      }
-
-      if (received == 0) throw 'الملف فارغ.';
-      if (ext == 'pdf') {
-        final head = await tmp.openRead(0, 5).fold<List<int>>([], (a, b) => a..addAll(b));
-        if (String.fromCharCodes(head).trim().isEmpty || !String.fromCharCodes(head).startsWith('%PDF')) {
-          throw 'الملف المُحمَّل ليس PDF صالحاً. تأكد من مشاركة الرابط للجميع.';
-        }
-      }
       if (await target.exists()) await target.delete();
-      await tmp.rename(target.path);
 
-      _files[m.id] = OfflineFile(
-        id: m.id,
-        title: m.title,
-        subject: m.subject,
-        department: m.department,
-        ext: ext,
-        path: target.path,
-        size: received,
-        savedAt: DateTime.now(),
+      final task = DownloadTask(
+        taskId: _taskId(m.id),
+        url: directDownloadUrl(m.fileUrl),
+        filename: '${m.id}.$ext',
+        baseDirectory: BaseDirectory.applicationDocuments,
+        directory: 'materials',
+        group: _group,
+        updates: Updates.statusAndProgress,
+        retries: 3,
+        allowPause: true,
+        displayName: m.title,
+        metaData: jsonEncode({
+          'id': m.id,
+          'title': m.title,
+          'subject': m.subject,
+          'department': m.department,
+          'ext': ext,
+        }),
       );
-      await _save();
-      await notif.showDownloadCompleted(
-        id: notifId,
-        title: 'تم التحميل',
-        body: 'تم حفظ "${m.title}" ويمكنك فتحه بدون إنترنت',
-        filePath: target.path,
-      );
-      return true;
-    } catch (e) {
-      await notif.cancel(notifId);
-      _errors[m.id] = e is TimeoutException ? 'انتهت مهلة الاتصال.' : '$e';
-      try {
-        if (tmp != null && await tmp.exists()) await tmp.delete();
-      } catch (_) {}
-      return false;
-    } finally {
-      client.close();
-      _progress.remove(m.id);
+      _progress[m.id] = 0;
       notifyListeners();
+      final ok = await FileDownloader().enqueue(task);
+      if (!ok) {
+        _progress.remove(m.id);
+        _errors[m.id] = 'تعذّر بدء التحميل.';
+        notifyListeners();
+      }
+      return ok;
+    } catch (e) {
+      _progress.remove(m.id);
+      _errors[m.id] = '$e';
+      notifyListeners();
+      return false;
     }
+  }
+
+  Future<void> cancelDownload(String materialId) async {
+    await FileDownloader().cancelTaskWithId(_taskId(materialId));
   }
 
   String _cleanExt(String ext) {
