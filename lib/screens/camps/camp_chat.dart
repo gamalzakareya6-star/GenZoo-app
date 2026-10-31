@@ -674,7 +674,7 @@ class _Bubble extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsetsDirectional.only(bottom: 4, end: 6),
-                  child: UserAvatar(name: msg.name, photoUrl: msg.photo, radius: 14),
+                  child: UserAvatar(name: msg.name, photoUrl: msg.photo, uid: msg.uid, radius: 14),
                 ),
                 Flexible(child: bubble),
               ],

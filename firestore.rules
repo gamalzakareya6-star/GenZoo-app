@@ -134,6 +134,15 @@ service cloud.firestore {
 
     // 100-tree challenge leaderboard: everyone signed in reads, each student
     // writes only their own entry.
+    // Profile pictures (small base64 JPEG): signed-in users read, owner writes.
+    match /avatars/{uid} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && uid == request.auth.uid
+                            && request.resource.data.b64 is string
+                            && request.resource.data.b64.size() < 60000;
+      allow delete: if isAdmin() || (isAuthenticated() && uid == request.auth.uid);
+    }
+
     match /forest/{uid} {
       allow read: if isAuthenticated();
       allow create, update: if isAuthenticated() && uid == request.auth.uid

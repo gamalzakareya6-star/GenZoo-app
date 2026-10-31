@@ -101,6 +101,20 @@ class AuthService {
     return newUser;
   }
 
+  /// Re-signs a Google user without showing any UI (null if not possible).
+  Future<AppUser?> signInGoogleSilently() async {
+    final googleUser = await GoogleSignIn().signInSilently();
+    if (googleUser == null) return null;
+    final googleAuth = await googleUser.authentication;
+    final result = await _auth.signInWithCredential(GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    ));
+    final u = result.user;
+    if (u == null) return null;
+    return getUserProfile(u.uid);
+  }
+
   Future<AppUser?> signInWithGoogle() async {
     final GoogleSignInAccount? googleUser =
         await GoogleSignIn().signIn();

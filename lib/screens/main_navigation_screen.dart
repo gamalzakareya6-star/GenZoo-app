@@ -183,7 +183,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                UserAvatar(name: user.displayName, photoUrl: user.photoUrl, radius: 32),
+                UserAvatar(name: user.displayName, photoUrl: user.photoUrl, uid: user.uid, radius: 32),
                 const SizedBox(height: 10),
                 Text(
                   user.displayName,

@@ -1330,8 +1330,9 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
         }
         final img = snap.data!;
         return LayoutBuilder(builder: (context, box) {
-          const topPad = 76.0;
-          final bottomPad = _editing ? 210.0 : 84.0;
+          final short = box.maxHeight < 520; // landscape phone
+          final topPad = short ? 54.0 : 76.0;
+          final bottomPad = _editing ? (short ? 150.0 : 210.0) : (short ? 60.0 : 84.0);
           final avail = Size(box.maxWidth - 16, box.maxHeight - topPad - bottomPad);
           final ratio = img.w / img.h;
           var w = avail.width;

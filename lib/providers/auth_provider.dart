@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_model.dart';
@@ -66,6 +67,50 @@ class UserAuthProvider extends ChangeNotifier {
       displayName: u.displayName ?? (u.email?.split('@').first ?? 'طالب'),
       role: UserRole.student,
     );
+  }
+
+  // ---- credentials kept in the Android Keystore so the student stays signed
+  // in until they press "sign out", even if Firebase loses its own session ----
+  static const _sec = FlutterSecureStorage();
+
+  Future<void> _saveCreds(String email, String password) async {
+    try {
+      await _sec.write(key: 'cred_email', value: email.trim());
+      await _sec.write(key: 'cred_pass', value: password);
+      await _sec.delete(key: 'cred_google');
+    } catch (_) {}
+  }
+
+  Future<void> _clearCreds() async {
+    try {
+      await _sec.delete(key: 'cred_email');
+      await _sec.delete(key: 'cred_pass');
+      await _sec.delete(key: 'cred_google');
+    } catch (_) {}
+  }
+
+  /// Signs in again from the saved credentials. Returns true on success.
+  Future<bool> trySilentSignIn() async {
+    try {
+      final e = await _sec.read(key: 'cred_email');
+      final p = await _sec.read(key: 'cred_pass');
+      if (e != null && p != null && e.isNotEmpty && p.isNotEmpty) {
+        _user = await _authService.signInWithEmailPassword(e, p).timeout(const Duration(seconds: 12));
+        notifyListeners();
+        _rememberSignedIn(_user!);
+        return true;
+      }
+      if (await _sec.read(key: 'cred_google') == '1') {
+        final u = await _authService.signInGoogleSilently().timeout(const Duration(seconds: 12));
+        if (u != null) {
+          _user = u;
+          notifyListeners();
+          _rememberSignedIn(u);
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
   }
 
   // ---- what is remembered on the device ----
@@ -201,6 +246,7 @@ class UserAuthProvider extends ChangeNotifier {
       );
       notifyListeners();
       _rememberSignedIn(_user!);
+      _saveCreds(email, password);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(e.message ?? 'فشل تسجيل الدخول');
@@ -228,6 +274,11 @@ class UserAuthProvider extends ChangeNotifier {
       _user = profile;
       notifyListeners();
       _rememberSignedIn(profile);
+      try {
+        await _sec.delete(key: 'cred_email');
+        await _sec.delete(key: 'cred_pass');
+        await _sec.write(key: 'cred_google', value: '1');
+      } catch (_) {}
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(
@@ -266,6 +317,7 @@ class UserAuthProvider extends ChangeNotifier {
 
       notifyListeners();
       _rememberSignedIn(_user!);
+      _saveCreds(email, password);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(e.message ?? 'فشل إنشاء الحساب');
@@ -362,6 +414,7 @@ class UserAuthProvider extends ChangeNotifier {
 
     try {
       await _authService.signOut();
+      await _clearCreds();
       _user = null;
       _cachedProfile = null;
       _sessionLost = false;

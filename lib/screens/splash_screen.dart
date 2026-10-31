@@ -149,6 +149,13 @@ class _SplashScreenState extends State<SplashScreen>
       authProvider.restoreFromFirebaseSession();
     }
 
+    // Firebase lost its saved session (cleared data, revoked token...): sign in
+    // again silently from the credentials kept on the device.
+    if (authProvider.user == null && FirebaseAuth.instance.currentUser == null) {
+      await authProvider.trySilentSignIn();
+      if (!mounted) return;
+    }
+
     // A student who chose "continue as guest" stays a guest until they sign in.
     if (authProvider.user == null && await authProvider.wasGuest()) {
       authProvider.loginAsGuest();
@@ -175,7 +182,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final logoSize = math.min(width * 0.58, 260.0);
+    final height = MediaQuery.of(context).size.height;
+    final logoSize = math.min(math.min(width * 0.58, height * 0.34), 260.0);
 
     return Scaffold(
       body: Container(
