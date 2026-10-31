@@ -13,6 +13,7 @@ import '../../core/services/url_service.dart';
 import '../../core/utils/drive_link.dart';
 import '../../models/camp_model.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/user_avatar.dart';
 import '../../widgets/news_images.dart' show openImageViewer;
 import 'camp_attach.dart';
 
@@ -39,8 +40,9 @@ class CampChat extends StatefulWidget {
   final Camp camp;
   final String uid;
   final String name;
+  final String photo;
   final bool manage;
-  const CampChat({super.key, required this.camp, required this.uid, required this.name, required this.manage});
+  const CampChat({super.key, required this.camp, required this.uid, required this.name, this.photo = '', required this.manage});
 
   @override
   State<CampChat> createState() => _CampChatState();
@@ -154,6 +156,7 @@ class _CampChatState extends State<CampChat> with AutomaticKeepAliveClientMixin 
         fileUrl: fileUrl,
         audioUrl: audioUrl,
         audioSecs: audioSecs,
+        photo: widget.photo,
         replyTo: reply,
       );
     } catch (_) {
@@ -613,9 +616,7 @@ class _Bubble extends StatelessWidget {
             if (msg.text.isNotEmpty) Text(msg.text, style: TextStyle(color: fg, height: 1.35)),
           ]);
 
-    return Align(
-      alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
-      child: GestureDetector(
+    final bubble = GestureDetector(
         onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: mine ? CrossAxisAlignment.start : CrossAxisAlignment.end,
@@ -661,7 +662,23 @@ class _Bubble extends StatelessWidget {
               ),
           ],
         ),
-      ),
+      );
+
+    return Align(
+      alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
+      child: mine
+          ? bubble
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(bottom: 4, end: 6),
+                  child: UserAvatar(name: msg.name, photoUrl: msg.photo, radius: 14),
+                ),
+                Flexible(child: bubble),
+              ],
+            ),
     );
   }
 }

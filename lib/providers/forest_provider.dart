@@ -95,7 +95,7 @@ class ForestProvider extends ChangeNotifier {
   }
 
   /// Ends the session and returns what it earned: (seconds, trees gained).
-  Future<({int seconds, int newTrees})> stop({String? uid, String? name}) async {
+  Future<({int seconds, int newTrees})> stop({String? uid, String? name, String? photo}) async {
     if (!running) return (seconds: 0, newTrees: 0);
     final before = trees;
     final secs = sessionSecs;
@@ -105,15 +105,16 @@ class ForestProvider extends ChangeNotifier {
     notifyListeners();
     await _save();
     unawaited(_cancelTreeAlerts());
-    if (uid != null) unawaited(syncRemote(uid, name ?? 'طالب'));
+    if (uid != null) unawaited(syncRemote(uid, name ?? 'طالب', photo));
     return (seconds: secs, newTrees: trees - before);
   }
 
   /// Publishes the student's total for the leaderboard.
-  Future<void> syncRemote(String uid, String name) async {
+  Future<void> syncRemote(String uid, String name, [String? photo]) async {
     try {
       await FirebaseFirestore.instance.collection('forest').doc(uid).set({
         'name': name,
+        if (photo != null && photo.isNotEmpty) 'photo': photo,
         'seconds': _storedSecs,
         'trees': _storedSecs ~/ treeSeconds,
         'updatedAt': FieldValue.serverTimestamp(),

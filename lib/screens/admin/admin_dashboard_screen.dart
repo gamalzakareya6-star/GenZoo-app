@@ -17,6 +17,7 @@ import '../../models/review_model.dart';
 import '../../core/services/review_service.dart';
 import '../../providers/feature_flags.dart';
 import 'review_moderation_screen.dart';
+import 'students_screen.dart';
 import 'opinions_moderation_screen.dart';
 import '../../core/services/opinion_service.dart';
 
@@ -199,6 +200,16 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 10),
+
+            _buildActionTile(
+              context,
+              title: 'بيانات الطلاب',
+              subtitle: 'الأسماء وأرقام الهواتف مع واتساب',
+              icon: Icons.contacts_rounded,
+              color: Colors.indigo.shade600,
+              onTap: () => Navigator.push(context, AppRoute.fadeSlide(const StudentsScreen())),
             ),
             const SizedBox(height: 10),
 

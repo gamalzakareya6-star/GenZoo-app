@@ -5,6 +5,7 @@ class NewsComment {
   final String uid;
   final String name;
   final String text;
+  final String photo;
   final DateTime createdAt;
 
   const NewsComment({
@@ -12,6 +13,7 @@ class NewsComment {
     required this.uid,
     required this.name,
     required this.text,
+    this.photo = '',
     required this.createdAt,
   });
 
@@ -22,6 +24,7 @@ class NewsComment {
       uid: d['uid'] as String? ?? '',
       name: d['name'] as String? ?? 'طالب',
       text: d['text'] as String? ?? '',
+      photo: d['photo'] as String? ?? '',
       // A just-written comment has no server time yet.
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -46,10 +49,12 @@ class CommentsService {
     required String uid,
     required String name,
     required String text,
+    String photo = '',
   }) {
     return _col(newsId).add({
       'uid': uid,
       'name': name,
+      if (photo.isNotEmpty) 'photo': photo,
       'text': text.trim(),
       'createdAt': FieldValue.serverTimestamp(),
     });

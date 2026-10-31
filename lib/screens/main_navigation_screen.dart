@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../core/constants/app_colors.dart';
 import 'settings/appearance_screen.dart';
+import 'settings/profile_screen.dart';
+import '../widgets/user_avatar.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/update_dialog.dart';
 import '../widgets/interactive_bottom_bar.dart';
@@ -177,18 +179,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Text(
-                    user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : 'U',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
+                UserAvatar(name: user.displayName, photoUrl: user.photoUrl, radius: 32),
                 const SizedBox(height: 10),
                 Text(
                   user.displayName,
@@ -217,6 +208,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     },
                   ),
                 ],
+                if (user.role != UserRole.guest)
+                  ListTile(
+                    leading: Icon(Icons.account_circle_rounded, color: AppColors.primary),
+                    title: const Text('ملفي الشخصي'),
+                    subtitle: const Text('الصورة والاسم ورقم الهاتف'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(context, AppRoute.fadeSlide(const ProfileScreen()));
+                    },
+                  ),
                 ListTile(
                   leading: Icon(Icons.palette_rounded, color: AppColors.primary),
                   title: const Text('المظهر والتخصيص'),

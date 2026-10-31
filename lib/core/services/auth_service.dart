@@ -69,6 +69,7 @@ class AuthService {
     required String password,
     required String displayName,
     required String academicYear,
+    String? phone,
   }) async {
     final result =
         await _auth.createUserWithEmailAndPassword(
@@ -88,6 +89,7 @@ class AuthService {
       displayName: displayName.trim(),
       role: UserRole.student,
       academicYear: academicYear,
+      phone: phone,
       createdAt: DateTime.now(),
     );
 
