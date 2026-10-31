@@ -60,7 +60,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     index: i,
                     child: Card(
                       child: ListTile(
-                        leading: UserAvatar(name: u.displayName, photoUrl: u.photoUrl, radius: 22),
+                        leading: UserAvatar(name: u.displayName, photoUrl: u.photoUrl, uid: u.uid, radius: 22),
                         title: Text(u.displayName),
                         subtitle: Text([
                           if (u.academicYear != null) u.academicYear!,

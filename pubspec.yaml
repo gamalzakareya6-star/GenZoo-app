@@ -44,6 +44,8 @@ dependencies:
   pdfx: ^2.9.2
   pdf: ^3.11.1
   file_picker: ^8.1.2
+  image: ^4.2.0
+  flutter_secure_storage: ^9.2.2
   background_downloader: ^8.5.0
   timezone: any
   record: ^6.0.0

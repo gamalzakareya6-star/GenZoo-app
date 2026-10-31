@@ -151,7 +151,7 @@ class _CommentTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          UserAvatar(name: comment.name, photoUrl: comment.photo, radius: 16),
+          UserAvatar(name: comment.name, photoUrl: comment.photo, uid: comment.uid, radius: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

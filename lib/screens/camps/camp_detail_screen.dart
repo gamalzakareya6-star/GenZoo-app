@@ -137,7 +137,9 @@ class _MemberView extends StatelessWidget {
           ),
         ),
         body: Column(children: [
-          FadeSlideIn(offsetY: -12, child: _Header(camp: camp)),
+          // Landscape phones are short: keep the room for the chat.
+          if (MediaQuery.of(context).size.height >= 520)
+            FadeSlideIn(offsetY: -12, child: _Header(camp: camp)),
           Expanded(
             child: TabBarView(children: [
               CampChat(camp: camp, uid: uid, name: name, photo: photo, manage: _manage),

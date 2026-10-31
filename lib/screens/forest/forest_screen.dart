@@ -305,7 +305,7 @@ class _Leaderboard extends StatelessWidget {
                   leading: Row(mainAxisSize: MainAxisSize.min, children: [
                     SizedBox(width: 30, child: Center(child: Text(medal, style: const TextStyle(fontSize: 18)))),
                     const SizedBox(width: 6),
-                    UserAvatar(name: d['name'] as String? ?? '', photoUrl: d['photo'] as String?, radius: 17),
+                    UserAvatar(name: d['name'] as String? ?? '', photoUrl: d['photo'] as String?, uid: docs[i].id, radius: 17),
                   ]),
                   title: Text(d['name'] as String? ?? 'طالب', style: TextStyle(fontWeight: mine ? FontWeight.bold : null)),
                   trailing: Text('$trees 🌳', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),

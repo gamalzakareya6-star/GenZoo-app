@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/services/drive_upload_service.dart';
+import 'dart:typed_data';
+
+import '../../core/services/avatar_service.dart';
 import '../../core/utils/phone.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
@@ -26,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _year;
   String? _dept;
   String? _photo;
+  Uint8List? _newBytes;
   bool _removePhoto = false;
   bool _busy = false;
 
@@ -57,13 +60,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (path == null) return;
     setState(() => _busy = true);
     try {
-      final f = await DriveUploadService.upload(path, displayName: 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final bytes = await AvatarService.prepare(path);
       setState(() {
-        _photo = f.url;
+        _newBytes = bytes;
         _removePhoto = false;
       });
     } catch (e) {
-      _snack(e.toString());
+      _snack('تعذّر تجهيز الصورة: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -72,13 +75,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
+    final uid = context.read<UserAuthProvider>().user?.uid;
+    if (uid != null) {
+      try {
+        if (_removePhoto) {
+          await AvatarService.remove(uid);
+        } else if (_newBytes != null) {
+          await AvatarService.save(uid, _newBytes!);
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _busy = false);
+          _snack('تعذّر حفظ الصورة. تأكد من نشر آخر firestore.rules والاتصال بالإنترنت.');
+        }
+        return;
+      }
+    }
+    if (!mounted) return;
     final err = await context.read<UserAuthProvider>().updateProfile(
           displayName: _name.text,
           phone: normalizePhone(_phone.text),
           bio: _bio.text,
           academicYear: _year,
           department: _dept,
-          photoUrl: _removePhoto ? null : _photo,
+          photoUrl: _removePhoto ? null : (_newBytes != null ? 'avatar' : _photo),
           removePhoto: _removePhoto,
         );
     if (!mounted) return;
@@ -100,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: const Center(child: Text('سجّل الدخول بحسابك لتعديل ملفك الشخصي.')),
       );
     }
-    final shownPhoto = _removePhoto ? null : _photo;
+    final shownPhoto = _removePhoto ? null : (_newBytes != null ? 'avatar' : _photo);
     return Scaffold(
       appBar: AppBar(title: const Text('ملفي الشخصي')),
       body: Form(
@@ -108,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Center(
             child: Stack(children: [
-              UserAvatar(name: _name.text, photoUrl: shownPhoto, radius: 54),
+              UserAvatar(name: _name.text, photoUrl: shownPhoto, uid: _removePhoto ? null : user.uid, bytes: _newBytes, radius: 54),
               PositionedDirectional(
                 bottom: 0,
                 end: 0,
