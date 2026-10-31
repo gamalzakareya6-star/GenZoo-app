@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../main_navigation_screen.dart';
+import '../../core/utils/phone.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController =
       TextEditingController();
   final TextEditingController _nameController =
+      TextEditingController();
+  final TextEditingController _phoneController =
       TextEditingController();
 
   String _selectedYear = AppConstants.academicYears.first;
@@ -54,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -111,6 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
         displayName: _nameController.text.trim(),
         academicYear: _selectedYear,
+        phone: normalizePhone(_phoneController.text),
       );
     } else {
       success = await auth.signIn(
@@ -370,6 +375,21 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 14),
+
+                          TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            textDirection: TextDirection.ltr,
+                            decoration: const InputDecoration(
+                              labelText: 'رقم الهاتف',
+                              hintText: '01xxxxxxxxx',
+                              prefixIcon: Icon(Icons.phone_outlined),
+                              helperText: 'يظهر للمشرفين فقط',
+                            ),
+                            validator: (value) =>
+                                isValidPhone(value ?? '') ? null : 'أدخل رقم هاتف مصري صحيحاً (11 رقماً)',
                           ),
                           const SizedBox(height: 14),
 

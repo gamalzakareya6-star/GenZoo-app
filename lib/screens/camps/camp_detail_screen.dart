@@ -101,7 +101,9 @@ class _MemberView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = context.read<UserAuthProvider>().user?.displayName ?? 'عضو';
+    final me = context.read<UserAuthProvider>().user;
+    final name = me?.displayName ?? 'عضو';
+    final photo = me?.photoUrl ?? '';
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -138,7 +140,7 @@ class _MemberView extends StatelessWidget {
           FadeSlideIn(offsetY: -12, child: _Header(camp: camp)),
           Expanded(
             child: TabBarView(children: [
-              CampChat(camp: camp, uid: uid, name: name, manage: _manage),
+              CampChat(camp: camp, uid: uid, name: name, photo: photo, manage: _manage),
               _Tasks(camp: camp, uid: uid, manage: _manage),
               _Files(camp: camp, manage: _manage),
               _Members(camp: camp),

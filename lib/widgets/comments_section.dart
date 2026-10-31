@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'user_avatar.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +38,7 @@ class _CommentsSectionState extends State<CommentsSection> {
     }
     setState(() => _sending = true);
     try {
-      await CommentsService.add(newsId: widget.newsId, uid: user.uid, name: user.displayName, text: text);
+      await CommentsService.add(newsId: widget.newsId, uid: user.uid, name: user.displayName, text: text, photo: user.photoUrl ?? '');
       _controller.clear();
       _lastSent = DateTime.now();
       if (mounted) FocusScope.of(context).unfocus();
@@ -150,11 +151,7 @@ class _CommentTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primary.withOpacity(0.15),
-            child: Text(initial, style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-          ),
+          UserAvatar(name: comment.name, photoUrl: comment.photo, radius: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/daily_provider.dart';
 import '../../providers/forest_provider.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/user_avatar.dart';
 
 const _treeEmojis = ['🌳', '🌲', '🌴', '🌳', '🌲', '🌿'];
 const _green = Color(0xFF15803D);
@@ -117,7 +118,7 @@ class _MyForest extends StatelessWidget {
     final daily = context.read<DailyProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final before = f.trees;
-    final r = await f.stop(uid: signedIn ? user.uid : null, name: user?.displayName);
+    final r = await f.stop(uid: signedIn ? user.uid : null, name: user?.displayName, photo: user?.photoUrl);
     if (r.seconds >= 600) daily.markStudied();
     final gained = f.trees - before;
     messenger.showSnackBar(SnackBar(
@@ -301,7 +302,11 @@ class _Leaderboard extends StatelessWidget {
               child: Card(
                 color: mine ? _green.withOpacity(0.12) : null,
                 child: ListTile(
-                  leading: SizedBox(width: 34, child: Center(child: Text(medal, style: const TextStyle(fontSize: 20)))),
+                  leading: Row(mainAxisSize: MainAxisSize.min, children: [
+                    SizedBox(width: 30, child: Center(child: Text(medal, style: const TextStyle(fontSize: 18)))),
+                    const SizedBox(width: 6),
+                    UserAvatar(name: d['name'] as String? ?? '', photoUrl: d['photo'] as String?, radius: 17),
+                  ]),
                   title: Text(d['name'] as String? ?? 'طالب', style: TextStyle(fontWeight: mine ? FontWeight.bold : null)),
                   trailing: Text('$trees 🌳', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 ),

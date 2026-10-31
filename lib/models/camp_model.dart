@@ -114,6 +114,7 @@ class CampMessage {
   final String fileUrl;
   final String audioUrl;
   final int audioSecs;
+  final String photo;
   final Map<String, String> reactions; // uid -> emoji
   final List<String> seenBy;
   final Map<String, dynamic>? replyTo; // {id, name, text}
@@ -131,6 +132,7 @@ class CampMessage {
     required this.fileUrl,
     required this.audioUrl,
     required this.audioSecs,
+    this.photo = '',
     required this.reactions,
     required this.seenBy,
     required this.replyTo,
@@ -152,6 +154,7 @@ class CampMessage {
       fileUrl: d['fileUrl'] as String? ?? '',
       audioUrl: d['audioUrl'] as String? ?? '',
       audioSecs: (d['audioSecs'] as num?)?.toInt() ?? 0,
+      photo: d['photo'] as String? ?? '',
       reactions: r is Map ? {for (final e in r.entries) '${e.key}': '${e.value}'} : const {},
       seenBy: (d['seenBy'] as List<dynamic>? ?? []).whereType<String>().toList(),
       replyTo: d['replyTo'] is Map ? Map<String, dynamic>.from(d['replyTo'] as Map) : null,

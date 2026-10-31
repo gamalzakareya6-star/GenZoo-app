@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -94,6 +95,10 @@ class UserAuthProvider extends ChangeNotifier {
           role: (j['role'] as String?) == 'admin' ? UserRole.admin : UserRole.student,
           academicYear: j['year'] as String?,
           studentId: j['sid'] as String?,
+          phone: j['phone'] as String?,
+          bio: j['bio'] as String?,
+          department: j['dept'] as String?,
+          photoUrl: j['photo'] as String?,
         );
       }
       if (_authService.currentUser == null && (p.getBool(_kWasSignedIn) ?? false)) {
@@ -135,6 +140,10 @@ class UserAuthProvider extends ChangeNotifier {
           'role': u.role == UserRole.admin ? 'admin' : 'student',
           'year': u.academicYear,
           'sid': u.studentId,
+          'phone': u.phone,
+          'bio': u.bio,
+          'dept': u.department,
+          'photo': u.photoUrl,
         }),
       );
     } catch (_) {}
@@ -241,6 +250,7 @@ class UserAuthProvider extends ChangeNotifier {
     required String password,
     required String displayName,
     required String academicYear,
+    String? phone,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -251,6 +261,7 @@ class UserAuthProvider extends ChangeNotifier {
         password: password,
         displayName: displayName,
         academicYear: academicYear,
+        phone: phone,
       );
 
       notifyListeners();
@@ -296,6 +307,52 @@ class UserAuthProvider extends ChangeNotifier {
     _setError(null);
     notifyListeners();
     SharedPreferences.getInstance().then((p) => p.setBool(_kGuest, true)).catchError((_) => false);
+  }
+
+  /// Saves the student's own profile data (name, phone, bio, photo...).
+  /// Returns null on success or an error message.
+  Future<String?> updateProfile({
+    required String displayName,
+    required String phone,
+    required String bio,
+    String? academicYear,
+    String? department,
+    String? photoUrl,
+    bool removePhoto = false,
+  }) async {
+    final current = _user;
+    final fb = _authService.currentUser;
+    if (current == null || fb == null || current.role == UserRole.guest) {
+      return 'سجّل الدخول أولاً.';
+    }
+    try {
+      final data = <String, dynamic>{
+        'displayName': displayName.trim(),
+        'phone': phone.trim(),
+        'bio': bio.trim(),
+        if (academicYear != null) 'academicYear': academicYear,
+        if (department != null) 'department': department,
+        if (removePhoto) 'photoUrl': FieldValue.delete() else if (photoUrl != null) 'photoUrl': photoUrl,
+      };
+      await FirebaseFirestore.instance.collection('users').doc(current.uid).set(data, SetOptions(merge: true));
+      try {
+        await fb.updateDisplayName(displayName.trim());
+      } catch (_) {}
+      _user = current.copyWith(
+        displayName: displayName.trim(),
+        phone: phone.trim(),
+        bio: bio.trim(),
+        academicYear: academicYear,
+        department: department,
+        photoUrl: photoUrl,
+        clearPhoto: removePhoto,
+      );
+      notifyListeners();
+      _rememberSignedIn(_user!);
+      return null;
+    } catch (_) {
+      return 'تعذّر حفظ البيانات. تأكد من الاتصال وحاول مرة أخرى.';
+    }
   }
 
   // تسجيل الخروج

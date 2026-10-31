@@ -192,6 +192,7 @@ class CampService {
     String fileUrl = '',
     String audioUrl = '',
     int audioSecs = 0,
+    String photo = '',
     Map<String, dynamic>? replyTo,
   }) {
     return _camps.doc(campId).collection('messages').add({
@@ -203,6 +204,7 @@ class CampService {
       'fileUrl': fileUrl,
       'audioUrl': audioUrl,
       'audioSecs': audioSecs,
+      if (photo.isNotEmpty) 'photo': photo,
       'reactions': <String, String>{},
       'seenBy': [uid],
       if (replyTo != null) 'replyTo': replyTo,
