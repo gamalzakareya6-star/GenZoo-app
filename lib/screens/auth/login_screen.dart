@@ -31,6 +31,25 @@ class _LoginScreenState extends State<LoginScreen> {
   String _selectedYear = AppConstants.academicYears.first;
 
   @override
+  void initState() {
+    super.initState();
+    final auth = context.read<UserAuthProvider>();
+    auth.lastEmail().then((e) {
+      if (mounted && e.isNotEmpty && _emailController.text.isEmpty) _emailController.text = e;
+    });
+    if (auth.sessionLost) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('انتهت جلسة الدخول على هذا الجهاز، سجّل الدخول مرة أخرى.'),
+            duration: Duration(seconds: 6),
+          ));
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();

@@ -1,8 +1,10 @@
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_model.dart';
 import '../core/services/auth_service.dart';
@@ -28,6 +30,8 @@ class UserAuthProvider extends ChangeNotifier {
     _authSubscription =
         _authService.authStateChanges.listen((firebaseUser) async {
       if (firebaseUser == null) {
+        // A guest has no Firebase account: do not drop the guest session.
+        if (_user?.role == UserRole.guest) return;
         _user = null;
         notifyListeners();
         return;
@@ -39,6 +43,7 @@ class UserAuthProvider extends ChangeNotifier {
       if (profile != null) {
         _user = profile;
         notifyListeners();
+        _rememberSignedIn(profile);
         return;
       }
 
@@ -51,12 +56,89 @@ class UserAuthProvider extends ChangeNotifier {
     });
   }
 
-  AppUser _fallbackUser(User u) => AppUser(
-        uid: u.uid,
-        email: u.email ?? '',
-        displayName: u.displayName ?? (u.email?.split('@').first ?? 'طالب'),
-        role: UserRole.student,
+  AppUser _fallbackUser(User u) {
+    final c = _cachedProfile;
+    if (c != null && c.uid == u.uid) return c; // keeps the admin role offline
+    return AppUser(
+      uid: u.uid,
+      email: u.email ?? '',
+      displayName: u.displayName ?? (u.email?.split('@').first ?? 'طالب'),
+      role: UserRole.student,
+    );
+  }
+
+  // ---- what is remembered on the device ----
+  static const _kGuest = 'auth_guest_v1';
+  static const _kProfile = 'auth_profile_v1';
+  static const _kEmail = 'auth_last_email_v1';
+  static const _kWasSignedIn = 'auth_was_signed_in_v1';
+
+  AppUser? _cachedProfile;
+  bool _sessionLost = false;
+
+  /// True when the student was signed in before but Firebase no longer has a
+  /// session (so the login screen can explain why it is shown).
+  bool get sessionLost => _sessionLost;
+
+  /// Reads what was saved on the device; call before deciding the first screen.
+  Future<void> loadRemembered() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_kProfile);
+      if (raw != null) {
+        final j = jsonDecode(raw) as Map<String, dynamic>;
+        _cachedProfile = AppUser(
+          uid: j['uid'] as String? ?? '',
+          email: j['email'] as String? ?? '',
+          displayName: j['name'] as String? ?? 'طالب',
+          role: (j['role'] as String?) == 'admin' ? UserRole.admin : UserRole.student,
+          academicYear: j['year'] as String?,
+          studentId: j['sid'] as String?,
+        );
+      }
+      if (_authService.currentUser == null && (p.getBool(_kWasSignedIn) ?? false)) {
+        _sessionLost = true;
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> wasGuest() async {
+    try {
+      return (await SharedPreferences.getInstance()).getBool(_kGuest) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<String> lastEmail() async {
+    try {
+      return (await SharedPreferences.getInstance()).getString(_kEmail) ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _rememberSignedIn(AppUser u) async {
+    _cachedProfile = u;
+    _sessionLost = false;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(_kWasSignedIn, true);
+      await p.setBool(_kGuest, false);
+      if (u.email.isNotEmpty) await p.setString(_kEmail, u.email);
+      await p.setString(
+        _kProfile,
+        jsonEncode({
+          'uid': u.uid,
+          'email': u.email,
+          'name': u.displayName,
+          'role': u.role == UserRole.admin ? 'admin' : 'student',
+          'year': u.academicYear,
+          'sid': u.studentId,
+        }),
       );
+    } catch (_) {}
+  }
 
   Future<void> _retryProfileLoad(String uid) async {
     for (var i = 0; i < 6; i++) {
@@ -109,6 +191,7 @@ class UserAuthProvider extends ChangeNotifier {
         password,
       );
       notifyListeners();
+      _rememberSignedIn(_user!);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(e.message ?? 'فشل تسجيل الدخول');
@@ -135,6 +218,7 @@ class UserAuthProvider extends ChangeNotifier {
 
       _user = profile;
       notifyListeners();
+      _rememberSignedIn(profile);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(
@@ -170,6 +254,7 @@ class UserAuthProvider extends ChangeNotifier {
       );
 
       notifyListeners();
+      _rememberSignedIn(_user!);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(e.message ?? 'فشل إنشاء الحساب');
@@ -210,6 +295,7 @@ class UserAuthProvider extends ChangeNotifier {
     _user = AppUser.guestUser();
     _setError(null);
     notifyListeners();
+    SharedPreferences.getInstance().then((p) => p.setBool(_kGuest, true)).catchError((_) => false);
   }
 
   // تسجيل الخروج
@@ -220,6 +306,14 @@ class UserAuthProvider extends ChangeNotifier {
     try {
       await _authService.signOut();
       _user = null;
+      _cachedProfile = null;
+      _sessionLost = false;
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.setBool(_kGuest, false);
+        await p.setBool(_kWasSignedIn, false);
+        await p.remove(_kProfile);
+      } catch (_) {}
       notifyListeners();
     } catch (_) {
       _setError('تعذر تسجيل الخروج');

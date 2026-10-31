@@ -103,6 +103,8 @@ class _SplashScreenState extends State<SplashScreen>
       context,
       listen: false,
     );
+    await authProvider.loadRemembered();
+    if (!mounted) return;
 
     try {
       // Wait for Firebase to restore the saved session.
@@ -146,6 +148,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (authProvider.user == null) {
       authProvider.restoreFromFirebaseSession();
     }
+
+    // A student who chose "continue as guest" stays a guest until they sign in.
+    if (authProvider.user == null && await authProvider.wasGuest()) {
+      authProvider.loginAsGuest();
+    }
+    if (!mounted) return;
 
     final Widget next = authProvider.user != null
         ? const MainNavigationScreen()
