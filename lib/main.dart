@@ -162,7 +162,17 @@ class GenZooStudentPortalApp extends StatelessWidget {
           final system = mq.textScaler.scale(14) / 14;
           return MediaQuery(
             data: mq.copyWith(textScaler: TextScaler.linear(system * ap.fontScale)),
-            child: child ?? const SizedBox.shrink(),
+            // On tablets / landscape, keep content in a readable column instead
+            // of stretching it edge to edge.
+            child: ColoredBox(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+            ),
           );
         },
         home: const SplashScreen(),
