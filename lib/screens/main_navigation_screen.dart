@@ -17,6 +17,8 @@ import 'quran/quran_screen.dart';
 import 'essential_info/essential_info_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
+import '../core/services/external_pdf.dart';
+import '../core/services/prayer_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -34,6 +36,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.initState();
     // Offer a new version (if any) shortly after the app opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ExternalPdf.start();
+      PrayerService.load().then(PrayerService.reschedule);
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) checkForAppUpdate(context);
       });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/external_pdf.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -35,25 +36,45 @@ class DownloadsScreen extends StatelessWidget {
     final dl = context.watch<DownloadsProvider>();
     final downloads = dl.downloads;
     final exports = dl.exports;
+    final externals = dl.externals;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تحميلاتي')),
-      body: (downloads.isEmpty && exports.isEmpty)
+      appBar: AppBar(
+        title: const Text('تحميلاتي'),
+        actions: [
+          IconButton(
+            tooltip: 'فتح PDF من الجهاز',
+            icon: const Icon(Icons.folder_open_rounded),
+            onPressed: () => ExternalPdf.pick(context),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => ExternalPdf.pick(context),
+        icon: const Icon(Icons.upload_file_rounded),
+        label: const Text('فتح PDF من الجهاز'),
+      ),
+      body: (downloads.isEmpty && exports.isEmpty && externals.isEmpty)
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Text(
-                  'لا توجد ملفات محفوظة بعد.\nاضغط "تحميل" على أي مادة لتفتحها بدون إنترنت.',
+                  'لا توجد ملفات محفوظة بعد.\nاضغط "تحميل" على أي مادة، أو افتح أي PDF من جهازك لتقرأه وتعدّل عليه.',
                   textAlign: TextAlign.center,
                 ),
               ),
             )
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
               children: [
                 if (downloads.isNotEmpty) ...[
                   const _Header('ملفات محمّلة'),
                   for (var i = 0; i < downloads.length; i++) FadeSlideIn(index: i, child: _FileTile(file: downloads[i])),
+                ],
+                if (externals.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const _Header('ملفاتي الخارجية'),
+                  for (var i = 0; i < externals.length; i++) FadeSlideIn(index: i, child: _FileTile(file: externals[i])),
                 ],
                 if (exports.isNotEmpty) ...[
                   const SizedBox(height: 12),

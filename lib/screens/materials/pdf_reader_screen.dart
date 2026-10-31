@@ -7,7 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:pdfx/pdfx.dart' as px;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -70,6 +72,11 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
   bool _editing = false;
   bool _bars = true;
   bool _night = false;
+  bool _sepia = false;
+  bool _vertical = false;
+  double _dim = 0;
+  int _autoSecs = 0;
+  Timer? _autoTimer;
   bool _stylusOnly = false;
   bool _exporting = false;
 
@@ -116,7 +123,181 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
   void initState() {
     super.initState();
     _tc.addListener(_onZoom);
+    _loadPrefs();
     _open();
+  }
+
+  static const _prefsKey = 'pdf_reader_prefs_v1';
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _night = p.getBool('$_prefsKey.night') ?? false;
+        _sepia = p.getBool('$_prefsKey.sepia') ?? false;
+        _vertical = p.getBool('$_prefsKey.vertical') ?? false;
+        _dim = p.getDouble('$_prefsKey.dim') ?? 0;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _savePrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool('$_prefsKey.night', _night);
+      await p.setBool('$_prefsKey.sepia', _sepia);
+      await p.setBool('$_prefsKey.vertical', _vertical);
+      await p.setDouble('$_prefsKey.dim', _dim);
+    } catch (_) {}
+  }
+
+  void _setAuto(int secs) {
+    _autoTimer?.cancel();
+    _autoSecs = secs;
+    if (secs > 0) {
+      _autoTimer = Timer.periodic(Duration(seconds: secs), (_) {
+        if (!mounted || _editing || _zoomed) return;
+        if (_current < _pages) {
+          _pc?.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+        } else {
+          _setAuto(0);
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  Future<void> _sharePageImage() async {
+    try {
+      final img = await _render(_current);
+      final f = File('${Directory.systemTemp.path}/صفحة_$_current.png');
+      await f.writeAsBytes(img.bytes);
+      await Share.shareXFiles([XFile(f.path)], text: '${widget.file.title} — صفحة $_current');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذّرت المشاركة: $e')));
+    }
+  }
+
+  Future<void> _openExternally() async {
+    final r = await OpenFilex.open(_path, type: 'application/pdf');
+    if (r.type != ResultType.done && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا يوجد تطبيق آخر لفتح الملف.')));
+    }
+  }
+
+  void _showBookmarks() {
+    final pages = _bm.pages.toList()..sort();
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: pages.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(28),
+                child: Text('لا توجد علامات بعد. اضغط أيقونة العلامة أعلى الشاشة لحفظ الصفحة.', textAlign: TextAlign.center),
+              )
+            : ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final n in pages)
+                    ListTile(
+                      leading: const Icon(Icons.bookmark_rounded, color: Color(0xFFF59E0B)),
+                      title: Text('صفحة $n'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _pc?.jumpToPage(n - 1);
+                      },
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  void _readingSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setM) {
+          void both(VoidCallback f) {
+            setState(f);
+            setM(() {});
+            _savePrefs();
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('إعدادات القراءة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('الوضع الليلي'),
+                    value: _night,
+                    onChanged: (v) => both(() {
+                      _night = v;
+                      if (v) _sepia = false;
+                    }),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('وضع الورق (سيبيا) لراحة العين'),
+                    value: _sepia,
+                    onChanged: (v) => both(() {
+                      _sepia = v;
+                      if (v) _night = false;
+                    }),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('التمرير رأسياً (بدل أفقياً)'),
+                    value: _vertical,
+                    onChanged: (v) => both(() => _vertical = v),
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.brightness_low_rounded, size: 20),
+                      Expanded(
+                        child: Slider(
+                          value: _dim,
+                          min: 0,
+                          max: 0.7,
+                          onChanged: (v) => both(() => _dim = v),
+                        ),
+                      ),
+                      const Text('تعتيم'),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('قلب الصفحات تلقائياً', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final sec in const [0, 15, 30, 60, 120])
+                        ChoiceChip(
+                          label: Text(sec == 0 ? 'إيقاف' : (sec < 60 ? '$sec ث' : '${sec ~/ 60} د')),
+                          selected: _autoSecs == sec,
+                          onSelected: (_) {
+                            _setAuto(sec);
+                            setM(() {});
+                            setState(() {});
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _open() async {
@@ -807,6 +988,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
   @override
   void dispose() {
     _saveTimer?.cancel();
+    _autoTimer?.cancel();
     _ann.save(_path);
     _zoomAnim.dispose();
     _tc.dispose();
@@ -849,6 +1031,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                           textDirection: TextDirection.ltr,
                           child: PageView.builder(
                             controller: _pc,
+                            scrollDirection: _vertical ? Axis.vertical : Axis.horizontal,
                             itemCount: _pages,
                             physics: (_zoomed || (_editing && _drawingTool))
                                 ? const NeverScrollableScrollPhysics()
@@ -858,6 +1041,10 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                           ),
                         ),
                       ),
+                      if (_dim > 0)
+                        Positioned.fill(
+                          child: IgnorePointer(child: ColoredBox(color: Colors.black.withOpacity(_dim))),
+                        ),
                       Positioned(
                         top: 0,
                         left: 0,
@@ -984,7 +1171,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                     Text(widget.file.title,
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                     if (_pages > 0)
-                      Text('صفحة $_current من $_pages', style: TextStyle(fontSize: 11, color: theme.hintColor)),
+                      Text('صفحة $_current من $_pages • ${(_current * 100 / _pages).round()}%', style: TextStyle(fontSize: 11, color: theme.hintColor)),
                   ],
                 ),
               ),
@@ -1009,7 +1196,13 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                 IconButton(
                   tooltip: _night ? 'الوضع العادي' : 'الوضع الليلي',
                   icon: Icon(_night ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                  onPressed: () => setState(() => _night = !_night),
+                  onPressed: () {
+                    setState(() {
+                      _night = !_night;
+                      if (_night) _sepia = false;
+                    });
+                    _savePrefs();
+                  },
                 ),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -1038,17 +1231,23 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                   if (v == 'share') _shareOriginal();
                   if (v == 'clear') _clearPage();
                   if (v == 'stylus') setState(() => _stylusOnly = !_stylusOnly);
-                  if (v == 'night') setState(() => _night = !_night);
+                  if (v == 'settings') _readingSettings();
+                  if (v == 'bookmarks') _showBookmarks();
+                  if (v == 'pageimg') _sharePageImage();
+                  if (v == 'openext') _openExternally();
                 },
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'thumbs', child: ListTile(leading: Icon(Icons.grid_view_rounded), title: Text('كل الصفحات'), dense: true)),
                   const PopupMenuItem(value: 'jump', child: ListTile(leading: Icon(Icons.pin_drop_outlined), title: Text('الانتقال لصفحة'), dense: true)),
+                  const PopupMenuItem(value: 'settings', child: ListTile(leading: Icon(Icons.tune_rounded), title: Text('إعدادات القراءة'), dense: true)),
+                  const PopupMenuItem(value: 'bookmarks', child: ListTile(leading: Icon(Icons.bookmarks_rounded), title: Text('العلامات المحفوظة'), dense: true)),
+                  const PopupMenuItem(value: 'pageimg', child: ListTile(leading: Icon(Icons.image_rounded), title: Text('مشاركة الصفحة كصورة'), dense: true)),
+                  const PopupMenuItem(value: 'openext', child: ListTile(leading: Icon(Icons.open_in_new_rounded), title: Text('فتح بتطبيق آخر'), dense: true)),
                   const PopupMenuItem(value: 'export', child: ListTile(leading: Icon(Icons.picture_as_pdf_rounded), title: Text('تصدير نسخة معدّلة'), dense: true)),
                   const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.ios_share_rounded), title: Text('مشاركة الأصل'), dense: true)),
                   if (_editing) ...[
                     const PopupMenuItem(value: 'clear', child: ListTile(leading: Icon(Icons.layers_clear_rounded), title: Text('مسح تعديلات الصفحة'), dense: true)),
                     CheckedPopupMenuItem(value: 'stylus', checked: _stylusOnly, child: const Text('القلم فقط (تجاهل اللمس)')),
-                    CheckedPopupMenuItem(value: 'night', checked: _night, child: const Text('الوضع الليلي')),
                   ],
                 ],
               ),
@@ -1124,6 +1323,17 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
           final isCurrent = n == _current;
 
           Widget pageImage = Image.memory(img.bytes, fit: BoxFit.fill, gaplessPlayback: true);
+          if (_sepia && !_night) {
+            pageImage = ColorFiltered(
+              colorFilter: const ColorFilter.matrix(<double>[
+                0.95, 0, 0, 0, 0, //
+                0, 0.88, 0, 0, 0,
+                0, 0, 0.70, 0, 0,
+                0, 0, 0, 1, 0,
+              ]),
+              child: pageImage,
+            );
+          }
           if (_night) {
             pageImage = ColorFiltered(
               colorFilter: const ColorFilter.matrix(<double>[
