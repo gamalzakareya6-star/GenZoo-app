@@ -57,8 +57,8 @@ class HomeScreen extends StatelessWidget {
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0A1B3D), Color(0xFF1E3A8A)],
+                    gradient: LinearGradient(
+                      colors: [Color.lerp(AppColors.palette.primaryDark, Colors.black, 0.35)!, AppColors.palette.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
