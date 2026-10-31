@@ -290,7 +290,7 @@ class _StudyScheduleScreenState extends State<StudyScheduleScreen> {
       if (l != last) {
         out.add(Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          child: Text(l, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
         ));
         last = l;
       }

@@ -171,7 +171,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.secondary, AppColors.primary],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
@@ -386,17 +386,17 @@ class _Files extends StatelessWidget {
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
-            leading: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
+            leading: Icon(Icons.upload_file_rounded, color: AppColors.primary),
             title: const Text('رفع ملف من الجهاز'),
             onTap: () => Navigator.pop(ctx, 'device'),
           ),
           ListTile(
-            leading: const Icon(Icons.image_rounded, color: AppColors.secondary),
+            leading: Icon(Icons.image_rounded, color: AppColors.secondary),
             title: const Text('رفع صورة'),
             onTap: () => Navigator.pop(ctx, 'image'),
           ),
           ListTile(
-            leading: const Icon(Icons.menu_book_rounded, color: AppColors.accent),
+            leading: Icon(Icons.menu_book_rounded, color: AppColors.accent),
             title: const Text('اختيار من مواد التطبيق'),
             onTap: () => Navigator.pop(ctx, 'app'),
           ),

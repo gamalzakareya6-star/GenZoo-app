@@ -173,7 +173,7 @@ class OpinionCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.menu_book_rounded, size: 18, color: AppColors.primary),
+            Icon(Icons.menu_book_rounded, size: 18, color: AppColors.primary),
             const SizedBox(width: 6),
             Expanded(child: Text(o.subjectName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
           ]),
@@ -191,7 +191,7 @@ class OpinionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.lightbulb_rounded, size: 18, color: AppColors.accent),
+                Icon(Icons.lightbulb_rounded, size: 18, color: AppColors.accent),
                 const SizedBox(width: 6),
                 Expanded(child: Text(o.advice, style: const TextStyle(height: 1.4, fontSize: 13))),
               ]),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../core/constants/app_colors.dart';
+import 'settings/appearance_screen.dart';
 import '../widgets/custom_widgets.dart';
 import '../widgets/update_dialog.dart';
 import '../widgets/interactive_bottom_bar.dart';
@@ -93,7 +94,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           // Admin Dashboard Direct Shortcut
           if (user.isAdmin)
             IconButton(
-              icon: const Icon(Icons.dashboard_customize_rounded, color: AppColors.primary),
+              icon: Icon(Icons.dashboard_customize_rounded, color: AppColors.primary),
               tooltip: 'لوحة المسؤول',
               onPressed: () {
                 Navigator.push(
@@ -181,7 +182,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   backgroundColor: AppColors.primary.withOpacity(0.1),
                   child: Text(
                     user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
@@ -204,7 +205,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 const Divider(),
                 if (user.isAdmin) ...[
                   ListTile(
-                    leading: const Icon(Icons.admin_panel_settings_outlined, color: AppColors.primary),
+                    leading: Icon(Icons.admin_panel_settings_outlined, color: AppColors.primary),
                     title: const Text('فتح لوحة المسؤول'),
                     subtitle: const Text('انشر الأخبار وأدر الملفات والروابط'),
                     onTap: () {
@@ -216,6 +217,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     },
                   ),
                 ],
+                ListTile(
+                  leading: Icon(Icons.palette_rounded, color: AppColors.primary),
+                  title: const Text('المظهر والتخصيص'),
+                  subtitle: const Text('الألوان والواجهة والخط'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(context, AppRoute.fadeSlide(const AppearanceScreen()));
+                  },
+                ),
                 ListTile(
                   leading: Icon(
                     user.role == UserRole.guest ? Icons.login : Icons.logout,

@@ -300,7 +300,7 @@ class _AudioBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.record_voice_over_rounded,
+                      Icon(Icons.record_voice_over_rounded,
                           size: 20, color: AppColors.primary),
                       const SizedBox(width: 6),
                       ConstrainedBox(

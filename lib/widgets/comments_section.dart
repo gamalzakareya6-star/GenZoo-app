@@ -153,7 +153,7 @@ class _CommentTile extends StatelessWidget {
           CircleAvatar(
             radius: 16,
             backgroundColor: AppColors.primary.withOpacity(0.15),
-            child: Text(initial, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+            child: Text(initial, style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -20,6 +20,8 @@ import 'providers/downloads_provider.dart';
 import 'providers/review_stats_provider.dart';
 import 'providers/feature_flags.dart';
 import 'providers/daily_provider.dart';
+import 'providers/appearance_provider.dart';
+import 'core/constants/app_colors.dart';
 import 'providers/forest_provider.dart';
 import 'core/services/download_notification_service.dart';
 import 'screens/splash_screen.dart';
@@ -98,6 +100,9 @@ class GenZooStudentPortalApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
+          create: (_) => AppearanceProvider(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => UserAuthProvider(),
         ),
         ChangeNotifierProvider(
@@ -131,7 +136,8 @@ class GenZooStudentPortalApp extends StatelessWidget {
           },
         ),
       ],
-      child: MaterialApp(
+      child: Consumer<AppearanceProvider>(
+        builder: (context, ap, _) => MaterialApp(
         title: AppConstants.appName,
         scaffoldMessengerKey:
             NotificationService.messengerKey,
@@ -145,10 +151,20 @@ class GenZooStudentPortalApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
+        theme: AppTheme.build(Brightness.light, ap),
+        darkTheme: AppTheme.build(Brightness.dark, ap),
+        themeMode: ap.mode,
+        builder: (context, child) {
+          AppColors.dark = Theme.of(context).brightness == Brightness.dark;
+          final mq = MediaQuery.of(context);
+          final system = mq.textScaler.scale(14) / 14;
+          return MediaQuery(
+            data: mq.copyWith(textScaler: TextScaler.linear(system * ap.fontScale)),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: const SplashScreen(),
+        ),
       ),
     );
   }

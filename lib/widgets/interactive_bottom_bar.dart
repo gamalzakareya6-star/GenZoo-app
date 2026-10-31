@@ -97,7 +97,7 @@ class InteractiveBottomBar extends StatelessWidget {
                           width: itemW,
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 colors: [AppColors.primary, AppColors.secondary],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,

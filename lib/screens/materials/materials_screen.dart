@@ -213,7 +213,7 @@ class MaterialsScreen extends StatelessWidget {
                   ),
                   child: Text(
                     item.subject,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.secondary,
@@ -401,7 +401,7 @@ class _DownloadActions extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.offline_pin_rounded, size: 18, color: AppColors.secondary),
+          Icon(Icons.offline_pin_rounded, size: 18, color: AppColors.secondary),
           const SizedBox(width: 6),
           ElevatedButton.icon(
             onPressed: () {

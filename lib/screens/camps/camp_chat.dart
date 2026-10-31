@@ -399,7 +399,7 @@ class _CampChatState extends State<CampChat> with AutomaticKeepAliveClientMixin 
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
                       names.length == 1 ? '${names.first} يكتب الآن...' : '${names.length} أشخاص يكتبون الآن...',
-                      style: const TextStyle(fontSize: 12, color: AppColors.secondary),
+                      style: TextStyle(fontSize: 12, color: AppColors.secondary),
                     ),
                   ),
                 ),
@@ -416,13 +416,13 @@ class _CampChatState extends State<CampChat> with AutomaticKeepAliveClientMixin 
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: const BorderDirectional(start: BorderSide(color: AppColors.secondary, width: 4)),
+        border: BorderDirectional(start: BorderSide(color: AppColors.secondary, width: 4)),
       ),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(editing ? 'تعديل الرسالة' : 'رد على ${_replyTo!['name']}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.secondary)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.secondary)),
             Text(editing ? _editing!.text : '${_replyTo!['text']}',
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
           ]),
@@ -574,7 +574,7 @@ class _Bubble extends StatelessWidget {
           ])
         : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             if (!mine)
-              Text(msg.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.secondaryLight)),
+              Text(msg.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.secondaryLight)),
             if (msg.replyTo != null) _Quote(reply: msg.replyTo!, fg: fg, mine: mine),
             if (msg.imageUrl.isNotEmpty)
               Padding(
@@ -681,10 +681,10 @@ class _Quote extends StatelessWidget {
       decoration: BoxDecoration(
         color: fg.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
-        border: const BorderDirectional(start: BorderSide(color: AppColors.secondaryLight, width: 3)),
+        border: BorderDirectional(start: BorderSide(color: AppColors.secondaryLight, width: 3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${reply['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: AppColors.secondaryLight)),
+        Text('${reply['name'] ?? ''}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: AppColors.secondaryLight)),
         Text('${reply['text'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: fg.withOpacity(0.85), fontSize: 12)),
       ]),
     );

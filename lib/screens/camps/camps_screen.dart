@@ -149,7 +149,7 @@ class _JoinByCodeState extends State<_JoinByCode> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.vpn_key_rounded, size: 48, color: AppColors.secondary),
+          Icon(Icons.vpn_key_rounded, size: 48, color: AppColors.secondary),
           const SizedBox(height: 16),
           const Text('أدخل كود الدعوة الذي أرسله لك صاحب المعسكر', textAlign: TextAlign.center),
           const SizedBox(height: 16),

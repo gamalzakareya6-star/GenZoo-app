@@ -169,7 +169,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               color: AppColors.primary.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.system_update_rounded,
+            child: Icon(Icons.system_update_rounded,
                 color: AppColors.primary, size: 24),
           ),
           const SizedBox(width: 12),
@@ -232,7 +232,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.notifications_active_outlined,
+                      Icon(Icons.notifications_active_outlined,
                           size: 14, color: AppColors.secondary),
                       const SizedBox(width: 6),
                       Expanded(

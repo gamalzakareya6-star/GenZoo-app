@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
+
 class AppColors {
-  // Primary Palette
-  static const Color primary = Color(0xFF1E3A8A); // Deep Royal Blue
-  static const Color primaryLight = Color(0xFF3B82F6);
-  static const Color primaryDark = Color(0xFF172554);
+  // The brand colors follow the palette the student picked (see AppPalette).
+  // In dark mode the lighter shade is used so text stays readable.
+  static bool dark = false;
+  static AppPalette palette = AppPalette.presets.first;
 
-  // Secondary Palette
-  static const Color secondary = Color(0xFF0D9488); // Serene Teal
-  static const Color secondaryLight = Color(0xFF2DD4BF);
+  static Color get primary => dark ? palette.primaryLight : palette.primary;
+  static Color get primaryLight => palette.primaryLight;
+  static Color get primaryDark => palette.primaryDark;
+  static Color get secondary => palette.secondary;
+  static Color get secondaryLight => palette.secondaryLight;
+  static Color get accent => palette.accent;
 
-  // Accent & Highlights
-  static const Color accent = Color(0xFFF59E0B); // Amber / Gold
+  // Status colors
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF97316);
   static const Color error = Color(0xFFEF4444);

@@ -58,7 +58,7 @@ Future<StudyMaterial?> pickAppMaterial(BuildContext context) {
                       : ListView.builder(
                           itemCount: list.length,
                           itemBuilder: (_, i) => ListTile(
-                            leading: const Icon(Icons.description_rounded, color: AppColors.primary),
+                            leading: Icon(Icons.description_rounded, color: AppColors.primary),
                             title: Text(list[i].title, maxLines: 2, overflow: TextOverflow.ellipsis),
                             subtitle: Text(list[i].subject),
                             onTap: () => Navigator.pop(ctx, list[i]),
@@ -85,17 +85,17 @@ Future<AttachChoice?> showAttachMenu(BuildContext context, {bool withImage = tru
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (withImage)
           ListTile(
-            leading: const Icon(Icons.image_rounded, color: AppColors.secondary),
+            leading: Icon(Icons.image_rounded, color: AppColors.secondary),
             title: const Text('صورة'),
             onTap: () => Navigator.pop(ctx, AttachChoice.image),
           ),
         ListTile(
-          leading: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
+          leading: Icon(Icons.upload_file_rounded, color: AppColors.primary),
           title: const Text('ملف من الجهاز'),
           onTap: () => Navigator.pop(ctx, AttachChoice.device),
         ),
         ListTile(
-          leading: const Icon(Icons.menu_book_rounded, color: AppColors.accent),
+          leading: Icon(Icons.menu_book_rounded, color: AppColors.accent),
           title: const Text('ملف من مواد التطبيق'),
           onTap: () => Navigator.pop(ctx, AttachChoice.app),
         ),

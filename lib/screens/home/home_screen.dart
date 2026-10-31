@@ -1,6 +1,7 @@
 import '../../widgets/animations.dart';
 import 'package:flutter/material.dart';
 import '../daily/daily_screen.dart';
+import '../../providers/appearance_provider.dart';
 import '../forest/forest_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -49,14 +50,15 @@ class HomeScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             // Branded welcome banner
+            if (context.watch<AppearanceProvider>().showBanner)
             SliverToBoxAdapter(
               child: FadeSlideIn(
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0A1B3D), Color(0xFF1E3A8A)],
+                    gradient: LinearGradient(
+                      colors: [Color.lerp(AppColors.palette.primaryDark, Colors.black, 0.35)!, AppColors.palette.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -92,8 +94,8 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SliverToBoxAdapter(child: DailyCard()),
-            const SliverToBoxAdapter(child: ForestCard()),
+            if (context.watch<AppearanceProvider>().showDaily) const SliverToBoxAdapter(child: DailyCard()),
+            if (context.watch<AppearanceProvider>().showForest) const SliverToBoxAdapter(child: ForestCard()),
             // Category Filter Pills
             SliverToBoxAdapter(
               child: SizedBox(
@@ -232,7 +234,7 @@ class HomeScreen extends StatelessWidget {
                         color: AppColors.accent.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.push_pin, size: 12, color: AppColors.accent),
                           SizedBox(width: 4),
@@ -328,7 +330,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   if (isAdmin) ...[
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                      icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
                       tooltip: 'تعديل الإعلان',
                       onPressed: () => showDialog(
                         context: context,
