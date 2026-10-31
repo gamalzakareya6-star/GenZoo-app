@@ -132,6 +132,17 @@ service cloud.firestore {
                     || (isAuthenticated() && resource.data.uid == request.auth.uid);
     }
 
+    // 100-tree challenge leaderboard: everyone signed in reads, each student
+    // writes only their own entry.
+    match /forest/{uid} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && uid == request.auth.uid
+                            && request.resource.data.trees is int
+                            && request.resource.data.trees >= 0
+                            && request.resource.data.trees <= 100000;
+      allow delete: if isAdmin() || (isAuthenticated() && uid == request.auth.uid);
+    }
+
     // Study camps.
     function isMember(campId) {
       return isAuthenticated() &&

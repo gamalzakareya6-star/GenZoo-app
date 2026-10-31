@@ -7,6 +7,7 @@ import '../../models/quick_link_model.dart';
 import 'package:provider/provider.dart';
 import '../../providers/feature_flags.dart';
 import '../camps/camps_screen.dart';
+import '../forest/forest_screen.dart';
 import '../materials/subject_opinions_screen.dart';
 import '../study/study_schedule_screen.dart';
 import 'gpa_calculator_screen.dart';
@@ -195,6 +196,14 @@ class _StudyToolsTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _ToolCard(
+          icon: Icons.park_rounded,
+          color: const Color(0xFF15803D),
+          title: 'تحدي الـ100 شجرة',
+          subtitle: 'شجرة لكل نصف ساعة مذاكرة، اجمع غابتك',
+          enabled: true,
+          onOpen: () => Navigator.push(context, AppRoute.fadeSlide(const ForestScreen())),
+        ),
         _ToolCard(
           icon: Icons.forum_rounded,
           color: const Color(0xFF0F766E),
