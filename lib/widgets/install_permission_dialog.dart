@@ -44,7 +44,7 @@ class InstallPermissionGuideDialog extends StatelessWidget {
               color: AppColors.secondary.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.security_update_good_rounded,
+            child: Icon(Icons.security_update_good_rounded,
                 color: AppColors.secondary, size: 24),
           ),
           const SizedBox(width: 12),
@@ -141,7 +141,7 @@ class InstallPermissionGuideDialog extends StatelessWidget {
                             color: AppColors.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.school_rounded,
+                          child: Icon(Icons.school_rounded,
                               size: 18, color: AppColors.primary),
                         ),
                         const SizedBox(width: 10),
@@ -284,7 +284,7 @@ class InstallPermissionGuideDialog extends StatelessWidget {
           width: 18,
           height: 18,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,
           ),

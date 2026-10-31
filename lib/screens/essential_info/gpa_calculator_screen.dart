@@ -189,7 +189,7 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
         initiallyExpanded: gpa.previousCredits != null,
         shape: const Border(),
         collapsedShape: const Border(),
-        leading: const Icon(Icons.history_rounded, color: AppColors.primary),
+        leading: Icon(Icons.history_rounded, color: AppColors.primary),
         title: const Text(
           'نتيجتي السابقة (للمعدل التراكمي)',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -304,7 +304,7 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
       child: ExpansionTile(
         shape: const Border(),
         collapsedShape: const Border(),
-        leading: const Icon(Icons.table_chart_outlined, color: AppColors.primary),
+        leading: Icon(Icons.table_chart_outlined, color: AppColors.primary),
         title: const Text(
           'جدول التقديرات في اللائحة',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -391,7 +391,7 @@ class _ResultCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

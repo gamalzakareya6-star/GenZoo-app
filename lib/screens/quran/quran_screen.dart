@@ -253,7 +253,7 @@ class _QuranScreenState extends State<QuranScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: ListTile(
-                      leading: const Icon(Icons.bookmark_rounded,
+                      leading: Icon(Icons.bookmark_rounded,
                           color: AppColors.secondary),
                       title: const Text('متابعة القراءة'),
                       subtitle: Text(last.name),
@@ -286,7 +286,7 @@ class _QuranScreenState extends State<QuranScreen> {
                                     AppColors.secondary.withOpacity(0.12),
                                 child: Text(
                                   toArabicDigits(s.number),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.secondary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,

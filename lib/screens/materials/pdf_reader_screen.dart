@@ -684,7 +684,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                   : Image.memory(snap.data!, fit: BoxFit.cover, alignment: Alignment.topCenter),
             ),
             if (!(_ann.pages[n]?.isEmpty ?? true))
-              const Positioned(
+              Positioned(
                 top: 4,
                 left: 4,
                 child: Icon(Icons.edit_note_rounded, size: 18, color: AppColors.secondary),
@@ -746,7 +746,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
+            ListTile(
               leading: Icon(Icons.check_circle_rounded, color: AppColors.secondary),
               title: Text('تم حفظ نسخة معدّلة في "تحميلاتي"'),
               subtitle: Text('الملف الجديد يحتوي تعديلاتك ويُفتح في أي تطبيق PDF.'),
@@ -959,7 +959,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
               if (_editing)
                 IconButton(
                   tooltip: 'تم',
-                  icon: const Icon(Icons.check_circle_rounded, color: AppColors.secondary),
+                  icon: Icon(Icons.check_circle_rounded, color: AppColors.secondary),
                   onPressed: () {
                     HapticFeedback.lightImpact();
                     setState(() {
@@ -1013,7 +1013,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                 ),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                   child: IconButton(
                     tooltip: 'تعديل / كتابة',
                     icon: const Icon(Icons.edit_rounded, color: Colors.white),

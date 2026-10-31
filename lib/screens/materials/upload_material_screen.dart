@@ -87,7 +87,7 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
                     color: AppColors.primary.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(Icons.info_outline, color: AppColors.primary),
                       SizedBox(width: 10),

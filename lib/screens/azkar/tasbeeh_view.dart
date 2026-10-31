@@ -181,7 +181,7 @@ class _TasbeehViewState extends State<TasbeehView> {
                     value: _target > 0 ? progress : 0,
                     strokeWidth: 8,
                     backgroundColor: AppColors.secondary.withOpacity(0.15),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
+                    valueColor: AlwaysStoppedAnimation<Color>(
                       AppColors.secondary,
                     ),
                   ),
@@ -303,7 +303,7 @@ class _TasbeehViewState extends State<TasbeehView> {
         children: [
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.secondary,

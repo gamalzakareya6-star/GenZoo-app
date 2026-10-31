@@ -191,7 +191,7 @@ class DailyScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(children: [
-                const Icon(Icons.format_quote_rounded, color: AppColors.accent, size: 30),
+                Icon(Icons.format_quote_rounded, color: AppColors.accent, size: 30),
                 const SizedBox(width: 10),
                 Expanded(child: Text(Motivation.phraseFor(now), style: const TextStyle(height: 1.5, fontSize: 14.5))),
               ]),
@@ -242,7 +242,7 @@ class DailyScreen extends StatelessWidget {
                 for (var i = 0; i < tasks.length && i < 10; i++)
                   Card(
                     child: ListTile(
-                      leading: const Icon(Icons.checklist_rounded, color: AppColors.secondary),
+                      leading: Icon(Icons.checklist_rounded, color: AppColors.secondary),
                       title: Text(tasks[i].task.title),
                       subtitle: Text([
                         tasks[i].camp.name,
