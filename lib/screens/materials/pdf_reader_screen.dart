@@ -171,7 +171,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
   Future<void> _sharePageImage() async {
     try {
       final img = await _render(_current);
-      final f = File('${Directory.systemTemp.path}/صفحة_$_current.png');
+      final f = File('${Directory.systemTemp.path}/صفحة_$_current.jpg');
       await f.writeAsBytes(img.bytes);
       await Share.shareXFiles([XFile(f.path)], text: '${widget.file.title} — صفحة $_current');
     } catch (e) {
@@ -499,7 +499,18 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
   }
 
   void _pointerDown(PointerDownEvent e, Size s) {
-    if (_pointer != null) return;
+    if (_pointer != null) {
+      // A second finger means pinch/pan: drop the stroke in progress.
+      if (e.pointer != _pointer) {
+        setState(() {
+          _live = null;
+          _pointer = null;
+          _pressures = null;
+          _lastNorm = null;
+        });
+      }
+      return;
+    }
     if (_stylusOnly && e.kind != PointerDeviceKind.stylus) return;
     _pointer = e.pointer;
     final pos = e.localPosition;
@@ -822,8 +833,8 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                       : GridView.builder(
                           controller: scroll,
                           padding: const EdgeInsets.all(12),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 150,
                             mainAxisSpacing: 10,
                             crossAxisSpacing: 10,
                             childAspectRatio: 0.68,
@@ -1056,7 +1067,12 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                           child: AnimatedOpacity(
                             opacity: showBars ? 1 : 0,
                             duration: const Duration(milliseconds: 200),
-                            child: _topBar(theme),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 820),
+                                child: _topBar(theme),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -1064,7 +1080,10 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                         left: 10,
                         right: 10,
                         bottom: 0,
-                        child: SafeArea(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 720),
+                            child: SafeArea(
                           top: false,
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 8),
@@ -1084,6 +1103,8 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                                       ? KeyedSubtree(key: const ValueKey('slider'), child: _pageSlider(theme))
                                       : const SizedBox.shrink(key: ValueKey('none'))),
                             ),
+                          ),
+                        ),
                           ),
                         ),
                       ),
@@ -1396,7 +1417,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                 maxScale: 5,
                 clipBehavior: Clip.none,
                 panEnabled: _canPanZoom,
-                scaleEnabled: _canPanZoom,
+                scaleEnabled: true, // two fingers always zoom, even with a pen selected
                 child: content,
               ),
             ),

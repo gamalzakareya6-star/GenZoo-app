@@ -79,7 +79,7 @@ class PrayerCalc {
   static double _asrTime(double factor, double t, double lat, double jd, double mid) {
     final decl = _sun(jd + t / 24).decl;
     final angle = -_deg(math.atan(1 / (factor + math.tan(_rad((lat - decl).abs())))));
-    final v = (math.sin(_rad(angle)) - math.sin(_rad(decl)) * math.sin(_rad(lat))) /
+    final v = (-math.sin(_rad(angle)) - math.sin(_rad(decl)) * math.sin(_rad(lat))) /
         (math.cos(_rad(decl)) * math.cos(_rad(lat)));
     return mid + _deg(math.acos(v.clamp(-1.0, 1.0))) / 15;
   }
