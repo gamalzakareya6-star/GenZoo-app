@@ -20,6 +20,7 @@ import 'providers/downloads_provider.dart';
 import 'providers/review_stats_provider.dart';
 import 'providers/feature_flags.dart';
 import 'providers/daily_provider.dart';
+import 'providers/forest_provider.dart';
 import 'core/services/download_notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
@@ -107,6 +108,9 @@ class GenZooStudentPortalApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => DownloadsProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ForestProvider(),
         ),
         ChangeNotifierProvider(
           create: (_) => DailyProvider(),

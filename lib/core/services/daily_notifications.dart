@@ -15,7 +15,7 @@ class DailyNotifications {
   static const _days = 7;
   static bool _tzReady = false;
 
-  static void _initTz() {
+  static void initTz() {
     if (_tzReady) return;
     tzdata.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Africa/Cairo'));
@@ -37,7 +37,7 @@ class DailyNotifications {
       }
       if (!enabled) return;
 
-      _initTz();
+      initTz();
       final now = tz.TZDateTime.now(tz.local);
       for (var i = 0; i < _days; i++) {
         final day = now.add(Duration(days: i));
