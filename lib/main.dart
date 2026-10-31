@@ -26,6 +26,7 @@ import 'providers/forest_provider.dart';
 import 'core/services/download_notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/external_pdf.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -139,6 +140,7 @@ class GenZooStudentPortalApp extends StatelessWidget {
       child: Consumer<AppearanceProvider>(
         builder: (context, ap, _) => MaterialApp(
         title: AppConstants.appName,
+        navigatorKey: ExternalPdf.navigatorKey,
         scaffoldMessengerKey:
             NotificationService.messengerKey,
         locale: const Locale('ar'),

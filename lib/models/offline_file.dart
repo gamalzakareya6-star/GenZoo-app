@@ -24,6 +24,8 @@ class OfflineFile {
     this.lastPage = 1,
   });
 
+  bool get isExternal => id.startsWith('ext_');
+
   bool get isPdf => ext.toLowerCase() == 'pdf';
 
   String get sizeLabel {

@@ -10,17 +10,72 @@ import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.gamal.genzoo/installer"
+    private val PDF_CHANNEL = "com.gamal.genzoo/pdf_intent"
+    private var pdfChannel: MethodChannel? = null
+    private var pendingPdf: Map<String, String>? = null
+
+    /** Copies a PDF handed to us by another app (content:// or file://) into the app cache. */
+    private fun extractPdf(intent: Intent?): Map<String, String>? {
+        if (intent == null) return null
+        val uri: Uri? = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> if (Build.VERSION.SDK_INT >= 33)
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            else @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            else -> null
+        }
+        if (uri == null) return null
+        return try {
+            var name = "document.pdf"
+            if (uri.scheme == "content") {
+                contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0)?.let { name = it }
+                }
+            } else {
+                uri.lastPathSegment?.let { name = it }
+            }
+            val dir = File(cacheDir, "external_pdf").apply { mkdirs() }
+            val out = File(dir, "${System.currentTimeMillis()}_" + name.replace(Regex("[\\\\/:*?\"<>|]"), "_"))
+            contentResolver.openInputStream(uri)?.use { input ->
+                out.outputStream().use { input.copyTo(it) }
+            } ?: return null
+            mapOf("path" to out.absolutePath, "name" to name)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun deliverPdf(intent: Intent?) {
+        val data = extractPdf(intent) ?: return
+        val ch = pdfChannel
+        if (ch != null) ch.invokeMethod("openPdf", data) else pendingPdf = data
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        deliverPdf(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createNotificationChannels()
+        pendingPdf = extractPdf(intent)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        pdfChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PDF_CHANNEL).also { ch ->
+            ch.setMethodCallHandler { call, result ->
+                if (call.method == "getInitialPdf") {
+                    result.success(pendingPdf)
+                    pendingPdf = null
+                } else result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "canRequestPackageInstalls" -> {

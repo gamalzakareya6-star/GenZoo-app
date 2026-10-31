@@ -32,7 +32,8 @@ class DownloadsProvider extends ChangeNotifier {
     return list;
   }
 
-  List<OfflineFile> get downloads => items.where((f) => !f.isExport).toList();
+  List<OfflineFile> get downloads => items.where((f) => !f.isExport && !f.isExternal).toList();
+  List<OfflineFile> get externals => items.where((f) => f.isExternal).toList();
   List<OfflineFile> get exports => items.where((f) => f.isExport).toList();
 
   OfflineFile? fileFor(String id) {
@@ -275,6 +276,43 @@ class DownloadsProvider extends ChangeNotifier {
   }
 
   Future<Directory> exportsDir() => _dir('exports');
+
+  /// Imports a PDF opened from another app (or picked from the device) so it
+  /// can be read, edited and found again in "تحميلاتي".
+  Future<OfflineFile> addExternal({required String sourcePath, required String name}) async {
+    final dir = await _dir('external');
+    var clean = name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    if (!clean.toLowerCase().endsWith('.pdf')) clean = '$clean.pdf';
+    final src = File(sourcePath);
+    final size = await src.length();
+    // Same name + same size already imported → reuse it (keeps edits and last page).
+    for (final f in _files.values) {
+      if (f.isExternal && f.title == clean && f.size == size && File(f.path).existsSync()) {
+        f.lastPage = f.lastPage;
+        return f;
+      }
+    }
+    final id = 'ext_${DateTime.now().millisecondsSinceEpoch}';
+    final target = File('${dir.path}/$id.pdf');
+    await src.copy(target.path);
+    if (sourcePath.contains('external_pdf')) {
+      try { await src.delete(); } catch (_) {}
+    }
+    final f = OfflineFile(
+      id: id,
+      title: clean,
+      subject: 'ملف من خارج التطبيق',
+      department: '',
+      ext: 'pdf',
+      path: target.path,
+      size: size,
+      savedAt: DateTime.now(),
+    );
+    _files[id] = f;
+    await _save();
+    notifyListeners();
+    return f;
+  }
 
   Future<void> remove(String id) async {
     final f = _files.remove(id);
