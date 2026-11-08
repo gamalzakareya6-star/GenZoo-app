@@ -15,6 +15,12 @@ class RoleBadge extends StatelessWidget {
     IconData icon;
 
     switch (role) {
+      case UserRole.superAdmin:
+        bg = const Color(0xFFB91C1C).withOpacity(0.12);
+        fg = const Color(0xFFB91C1C);
+        label = 'مسؤول عام';
+        icon = Icons.verified_user_rounded;
+        break;
       case UserRole.admin:
         bg = AppColors.error.withOpacity(0.12);
         fg = AppColors.error;

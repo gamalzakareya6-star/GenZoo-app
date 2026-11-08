@@ -128,6 +128,14 @@ class MainActivity : FlutterActivity() {
         }
         manager.createNotificationChannel(newsChannel)
 
+        // Pending-submission alerts for admins.
+        val adminChannel = NotificationChannel(
+            "genzoo_admin",
+            "تنبيهات المسؤولين",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply { description = "طلبات رفع ملفات جديدة بحاجة إلى مراجعة" }
+        manager.createNotificationChannel(adminChannel)
+
         // Download progress channel (silent progress updates)
         val downloadChannel = NotificationChannel(
             "genzoo_downloads",

@@ -9,7 +9,14 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superAdmin'];
+    }
+
+    // The super-admin: the only role that may grant or revoke admin access.
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
     }
 
     // Users: a student may create/edit only their own profile and can never
@@ -20,7 +27,12 @@ service cloud.firestore {
                     && request.resource.data.role == 'student';
       allow update: if isAuthenticated() && request.auth.uid == userId
                     && request.resource.data.role == resource.data.role;
-      allow update, delete: if isAdmin();
+      // A plain admin may edit any profile but not grant/revoke roles; only
+      // the super-admin can change who is admin/superAdmin, and only the
+      // super-admin may delete an account.
+      allow update: if isAdmin()
+                    && (request.resource.data.role == resource.data.role || isSuperAdmin());
+      allow delete: if isSuperAdmin();
     }
 
     // Private per-user data (e.g. the saved GPA calculator): only its owner.
