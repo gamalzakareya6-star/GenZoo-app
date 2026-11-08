@@ -19,6 +19,7 @@ import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
 import '../core/services/external_pdf.dart';
 import '../core/services/prayer_service.dart';
+import '../core/services/notification_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -63,6 +64,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final authProvider = Provider.of<UserAuthProvider>(context);
     final user = authProvider.user ?? AppUser.guestUser();
     final theme = Theme.of(context);
+    NotificationService.syncAdminTopic(authProvider.isAdmin);
 
     return Scaffold(
       appBar: AppBar(

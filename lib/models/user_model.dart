@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { admin, student, guest }
+enum UserRole { superAdmin, admin, student, guest }
 
 class AppUser {
   final String uid;
@@ -52,17 +52,22 @@ class AppUser {
         createdAt: createdAt,
       );
 
-  bool get isAdmin => role == UserRole.admin;
+  bool get isAdmin => role == UserRole.admin || role == UserRole.superAdmin;
+  bool get isSuperAdmin => role == UserRole.superAdmin;
 
   factory AppUser.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
-    final roleStr = data['role'] as String? ?? 'student';
+    final roleStr = (data['role'] as String? ?? 'student').toLowerCase();
 
     return AppUser(
       uid: doc.id,
       email: data['email'] as String? ?? '',
       displayName: data['displayName'] as String? ?? 'طالب',
-      role: roleStr.toLowerCase() == 'admin' ? UserRole.admin : UserRole.student,
+      role: roleStr == 'superadmin'
+          ? UserRole.superAdmin
+          : roleStr == 'admin'
+              ? UserRole.admin
+              : UserRole.student,
       academicYear: data['academicYear'] as String?,
       studentId: data['studentId'] as String?,
       phone: data['phone'] as String?,
@@ -78,7 +83,7 @@ class AppUser {
       'uid': uid,
       'email': email,
       'displayName': displayName,
-      'role': role == UserRole.admin ? 'admin' : 'student',
+      'role': role == UserRole.superAdmin ? 'superAdmin' : (role == UserRole.admin ? 'admin' : 'student'),
       'academicYear': academicYear,
       'studentId': studentId,
       if (phone != null) 'phone': phone,

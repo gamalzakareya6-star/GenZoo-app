@@ -24,8 +24,27 @@ class NotificationService {
       messengerKey = GlobalKey<ScaffoldMessengerState>();
 
   static const String newsTopic = 'news';
+  static const String adminTopic = 'admins';
 
   static bool _initialized = false;
+  static bool? _adminSubscribed;
+
+  /// Admins (and super-admins) get push alerts for things needing their
+  /// review, such as a new file-upload request. Called whenever the signed-in
+  /// user's admin status is known or changes.
+  static Future<void> syncAdminTopic(bool isAdmin) async {
+    if (_adminSubscribed == isAdmin) return;
+    try {
+      if (isAdmin) {
+        await FirebaseMessaging.instance.subscribeToTopic(adminTopic);
+      } else {
+        await FirebaseMessaging.instance.unsubscribeFromTopic(adminTopic);
+      }
+      _adminSubscribed = isAdmin;
+    } catch (e) {
+      debugPrint('Admin topic sync failed: $e');
+    }
+  }
 
   static Future<void> init() async {
     if (_initialized) return;

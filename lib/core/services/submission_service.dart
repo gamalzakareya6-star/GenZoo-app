@@ -52,6 +52,7 @@ class SubmissionService {
       'submitterName': submitterName,
       'submittedAt': FieldValue.serverTimestamp(),
       'status': 'pending',
+      'adminNotified': false,
     });
   }
 

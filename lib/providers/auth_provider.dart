@@ -26,7 +26,8 @@ class UserAuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
 
   // تحديد ما إذا كان المستخدم أدمن
-  bool get isAdmin => _user?.role == UserRole.admin;
+  bool get isAdmin => _user?.role == UserRole.admin || _user?.role == UserRole.superAdmin;
+  bool get isSuperAdmin => _user?.role == UserRole.superAdmin;
 
   UserAuthProvider() {
     _authSubscription =
@@ -137,7 +138,11 @@ class UserAuthProvider extends ChangeNotifier {
           uid: j['uid'] as String? ?? '',
           email: j['email'] as String? ?? '',
           displayName: j['name'] as String? ?? 'طالب',
-          role: (j['role'] as String?) == 'admin' ? UserRole.admin : UserRole.student,
+          role: (j['role'] as String?)?.toLowerCase() == 'superadmin'
+              ? UserRole.superAdmin
+              : (j['role'] as String?)?.toLowerCase() == 'admin'
+                  ? UserRole.admin
+                  : UserRole.student,
           academicYear: j['year'] as String?,
           studentId: j['sid'] as String?,
           phone: j['phone'] as String?,
@@ -182,7 +187,7 @@ class UserAuthProvider extends ChangeNotifier {
           'uid': u.uid,
           'email': u.email,
           'name': u.displayName,
-          'role': u.role == UserRole.admin ? 'admin' : 'student',
+          'role': u.role == UserRole.superAdmin ? 'superAdmin' : (u.role == UserRole.admin ? 'admin' : 'student'),
           'year': u.academicYear,
           'sid': u.studentId,
           'phone': u.phone,
@@ -404,6 +409,21 @@ class UserAuthProvider extends ChangeNotifier {
       return null;
     } catch (_) {
       return 'تعذّر حفظ البيانات. تأكد من الاتصال وحاول مرة أخرى.';
+    }
+  }
+
+  /// Super-admin only: promotes/demotes another account. Returns null on
+  /// success or an error message. Firestore rules enforce the same limit
+  /// server-side, so this is a UI convenience, not the real guard.
+  Future<String?> setUserRole(String uid, UserRole role) async {
+    if (!isSuperAdmin) return 'هذا الإجراء مقصور على المسؤول العام.';
+    if (uid == _user?.uid) return 'لا يمكنك تغيير صلاحيتك أنت.';
+    try {
+      final roleStr = role == UserRole.superAdmin ? 'superAdmin' : (role == UserRole.admin ? 'admin' : 'student');
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({'role': roleStr});
+      return null;
+    } catch (e) {
+      return 'تعذّر تنفيذ الإجراء: $e';
     }
   }
 

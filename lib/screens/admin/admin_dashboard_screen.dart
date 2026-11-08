@@ -18,6 +18,7 @@ import '../../core/services/review_service.dart';
 import '../../providers/feature_flags.dart';
 import 'review_moderation_screen.dart';
 import 'students_screen.dart';
+import 'manage_admins_screen.dart';
 import 'opinions_moderation_screen.dart';
 import '../../core/services/opinion_service.dart';
 
@@ -212,6 +213,18 @@ class AdminDashboardScreen extends StatelessWidget {
               onTap: () => Navigator.push(context, AppRoute.fadeSlide(const StudentsScreen())),
             ),
             const SizedBox(height: 10),
+
+            if (auth.isSuperAdmin) ...[
+              _buildActionTile(
+                context,
+                title: 'إدارة المسؤولين',
+                subtitle: 'تعيين مسؤولين جدد أو عزل أحدهم',
+                icon: Icons.admin_panel_settings_rounded,
+                color: const Color(0xFFB91C1C),
+                onTap: () => Navigator.push(context, AppRoute.fadeSlide(const ManageAdminsScreen())),
+              ),
+              const SizedBox(height: 10),
+            ],
 
             StreamBuilder<List<SubjectOpinion>>(
               stream: OpinionService.streamPending(),

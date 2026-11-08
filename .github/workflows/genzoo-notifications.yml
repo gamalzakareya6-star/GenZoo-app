@@ -51,6 +51,12 @@ jobs:
           GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
         run: python scripts/send_notifications.py
 
+      - name: Alert admins of pending file-upload requests
+        continue-on-error: true
+        env:
+          GENZOO_FCM_SERVICE_ACCOUNT: ${{ secrets.GENZOO_FCM_SERVICE_ACCOUNT }}
+        run: python scripts/notify_admins.py
+
       - name: Remove expired study camps
         continue-on-error: true
         env:
