@@ -58,7 +58,12 @@ class AuthService {
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(firebaseUser.uid)
-          .set(profile.toMap());
+          .set({
+        ...profile.toMap(),
+        // The login screen requires ticking the privacy-policy checkbox
+        // before this account-creating Google sign-in can run.
+        'privacyAcceptedAt': FieldValue.serverTimestamp(),
+      });
     }
 
     return profile;
@@ -96,7 +101,12 @@ class AuthService {
     await _firestore
         .collection(AppConstants.usersCollection)
         .doc(firebaseUser.uid)
-        .set(newUser.toMap());
+        .set({
+      ...newUser.toMap(),
+      // Audit trail: when this account first accepted the privacy policy
+      // (shown as a required checkbox on the registration screen).
+      'privacyAcceptedAt': FieldValue.serverTimestamp(),
+    });
 
     return newUser;
   }
