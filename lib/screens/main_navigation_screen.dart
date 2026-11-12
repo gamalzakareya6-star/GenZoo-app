@@ -78,14 +78,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               children: [
                 const Text(
                   'بوابة GenZoo',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                 ),
                 Text(
                   user.displayName,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface.withOpacity(0.58),
                   ),
                 ),
               ],
