@@ -36,8 +36,8 @@ class AppTheme {
     final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
     // Shape language of each interface style.
-    final cardRadius = switch (style) { UiStyle.modern => 16.0, UiStyle.flat => 8.0, UiStyle.soft => 24.0 };
-    final controlRadius = switch (style) { UiStyle.modern => 12.0, UiStyle.flat => 6.0, UiStyle.soft => 20.0 };
+    final cardRadius = switch (style) { UiStyle.modern => 22.0, UiStyle.flat => 12.0, UiStyle.soft => 26.0 };
+    final controlRadius = switch (style) { UiStyle.modern => 16.0, UiStyle.flat => 10.0, UiStyle.soft => 22.0 };
     final cardElevation = style == UiStyle.soft ? 2.0 : 0.0;
     final cardSide = style == UiStyle.modern ? BorderSide(color: border, width: 1) : BorderSide.none;
 
@@ -45,9 +45,9 @@ class AppTheme {
     final fonts = _fontTheme(ap?.font ?? AppFont.cairo, baseText);
     final textTheme = fonts.copyWith(
       displayLarge: fonts.displayLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.bold, color: textPrimary),
-      titleLarge: fonts.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: textPrimary),
-      titleMedium: fonts.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary),
-      bodyLarge: fonts.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.normal, color: textPrimary),
+      titleLarge: fonts.titleLarge?.copyWith(fontSize: 19, fontWeight: FontWeight.w800, color: textPrimary),
+      titleMedium: fonts.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, color: textPrimary),
+      bodyLarge: fonts.bodyLarge?.copyWith(fontSize: 15, height: 1.55, fontWeight: FontWeight.normal, color: textPrimary),
       bodyMedium: fonts.bodyMedium?.copyWith(fontSize: 13, fontWeight: FontWeight.normal, color: textSecondary),
     );
 
@@ -82,14 +82,18 @@ class AppTheme {
       visualDensity: (ap?.compact ?? false) ? VisualDensity.compact : VisualDensity.standard,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 68,
         centerTitle: false,
         iconTheme: IconThemeData(color: textPrimary),
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
         color: surface,
+        surfaceTintColor: Colors.transparent,
         elevation: cardElevation,
         shadowColor: Colors.black.withOpacity(isDark ? 0.5 : 0.12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardRadius), side: cardSide),
@@ -98,7 +102,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? surface : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(controlRadius), borderSide: BorderSide(color: border)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(controlRadius), borderSide: BorderSide(color: border)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(controlRadius), borderSide: BorderSide(color: primary, width: 1.5)),
@@ -110,7 +114,8 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size(0, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(controlRadius)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
@@ -122,11 +127,13 @@ class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
-        elevation: 6,
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(style == UiStyle.flat ? 12 : 24)),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
         showDragHandle: true,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(style == UiStyle.flat ? 12 : 24)),
