@@ -246,8 +246,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Login and registration toggle
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.all(4),
                     child: Row(
@@ -267,10 +267,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: !_isRegisterMode
-                                    ? Colors.white
+                                    ? theme.colorScheme.surface
                                     : Colors.transparent,
                                 borderRadius:
-                                    BorderRadius.circular(10),
+                                    BorderRadius.circular(13),
                               ),
                               child: Text(
                                 'تسجيل الدخول',
@@ -281,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : FontWeight.w500,
                                   color: !_isRegisterMode
                                       ? AppColors.primary
-                                      : Colors.grey.shade700,
+                                      : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -302,10 +302,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: _isRegisterMode
-                                    ? Colors.white
+                                    ? theme.colorScheme.surface
                                     : Colors.transparent,
                                 borderRadius:
-                                    BorderRadius.circular(10),
+                                    BorderRadius.circular(13),
                               ),
                               child: Text(
                                 'حساب جديد',
@@ -316,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : FontWeight.w500,
                                   color: _isRegisterMode
                                       ? AppColors.primary
-                                      : Colors.grey.shade700,
+                                      : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
