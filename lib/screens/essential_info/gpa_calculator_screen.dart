@@ -177,7 +177,7 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
     return Card(
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: theme.brightness == Brightness.dark
               ? AppColors.cardBorderDark
@@ -200,38 +200,47 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fields = [
+                TextField(
                   controller: _prevCreditsCtl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: deco('الساعات المحسوبة', 'مثال: 60'),
                   onChanged: (_) => _historyChanged(gpa),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
+                TextField(
                   controller: _prevGpaCtl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: deco('GPA (من 4)', 'مثال: 3.12'),
                   onChanged: (_) => _historyChanged(gpa),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
+                TextField(
                   controller: _prevPercentCtl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: deco('النسبة %', 'مثال: 78.4'),
                   onChanged: (_) => _historyChanged(gpa),
                 ),
-              ),
-            ],
+              ];
+              if (constraints.maxWidth < 430) {
+                return Column(
+                  children: [
+                    for (var i = 0; i < fields.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      fields[i],
+                    ],
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  for (var i = 0; i < fields.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(child: fields[i]),
+                  ],
+                ],
+              );
+            },
           ),
           const SizedBox(height: 8),
           Text(
@@ -294,7 +303,7 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
     return Card(
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(
           color: theme.brightness == Brightness.dark
               ? AppColors.cardBorderDark
@@ -370,8 +379,8 @@ class _ResultCard extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -389,14 +398,14 @@ class _ResultCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.25),
