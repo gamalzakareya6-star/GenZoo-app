@@ -93,6 +93,14 @@ jobs:
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
             "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
 
+          # Print the release certificate's SHA-1/SHA-256 so they can be
+          # registered for Google Sign-In in Firebase Console. These
+          # fingerprints are meant to be public (that's how Firebase/Google
+          # verify an app), so printing them in the build log is safe.
+          echo "::group::Release certificate fingerprints (for Firebase > Add fingerprint)"
+          keytool -list -v -keystore android/app/release.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep -E "SHA1:|SHA256:"
+          echo "::endgroup::"
+
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
       - name: Build APK
