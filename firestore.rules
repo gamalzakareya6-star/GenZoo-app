@@ -174,36 +174,91 @@ service cloud.firestore {
       return isAuthenticated() && (c.ownerId == request.auth.uid || request.auth.uid in c.adminIds);
     }
 
+    // A regular member may change only their own membership, in the same
+    // atomic batch that creates/deletes their members/{uid} document.
+    function isSelfCampMembershipChange(campId) {
+      let oldMembers = resource.data.memberIds.toSet();
+      let newMembers = request.resource.data.memberIds.toSet();
+      let added = newMembers.difference(oldMembers);
+      let removed = oldMembers.difference(newMembers);
+      let memberPath = /databases/$(database)/documents/camps/$(campId)/members/$(request.auth.uid);
+      let joining = added.size() == 1
+                    && added.hasOnly([request.auth.uid])
+                    && removed.size() == 0
+                    && existsAfter(memberPath)
+                    && (resource.data.isPublic == true
+                        || getAfter(memberPath).data.code == resource.data.inviteCode);
+      let leaving = removed.size() == 1
+                    && removed.hasOnly([request.auth.uid])
+                    && added.size() == 0
+                    && !existsAfter(memberPath);
+      return isAuthenticated()
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+             && resource.data.memberIds is list
+             && request.resource.data.memberIds is list
+             && oldMembers.size() == resource.data.memberIds.size()
+             && newMembers.size() == request.resource.data.memberIds.size()
+             && (joining || leaving);
+    }
+
+    // A member may mark/unmark only their own completion state.
+    function isSelfTaskCompletionChange() {
+      let oldDone = resource.data.doneBy.toSet();
+      let newDone = request.resource.data.doneBy.toSet();
+      let added = newDone.difference(oldDone);
+      let removed = oldDone.difference(newDone);
+      let markingDone = added.size() == 1
+                       && added.hasOnly([request.auth.uid])
+                       && removed.size() == 0;
+      let unmarkingDone = removed.size() == 1
+                          && removed.hasOnly([request.auth.uid])
+                          && added.size() == 0;
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneBy'])
+             && resource.data.doneBy is list
+             && request.resource.data.doneBy is list
+             && oldDone.size() == resource.data.doneBy.size()
+             && newDone.size() == request.resource.data.doneBy.size()
+             && (markingDone || unmarkingDone);
+    }
+
     match /camps/{campId} {
       allow read: if isAuthenticated()
                   && (resource.data.isPublic == true || request.auth.uid in resource.data.memberIds);
       allow create: if isAuthenticated()
                     && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.name is string
                     && request.resource.data.name.size() >= 1
-                    && request.resource.data.name.size() <= 80;
-      // Owner/admins edit freely; any signed-in user may only add or remove themselves.
-      allow update: if isAuthenticated()
-                    && (resource.data.ownerId == request.auth.uid
-                        || request.auth.uid in resource.data.adminIds
-                        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']));
+                    && request.resource.data.name.size() <= 80
+                    && request.resource.data.memberIds is list
+                    && request.resource.data.memberIds.size() == 1
+                    && request.resource.data.memberIds[0] == request.auth.uid
+                    && request.resource.data.adminIds is list
+                    && request.resource.data.adminIds.size() == 0;
+      // Owners/admins manage the camp. Other users can only join/leave themselves.
+      allow update: if canManageCamp(campId) || isSelfCampMembershipChange(campId);
       allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
 
       match /members/{uid} {
         allow read: if isMember(campId);
-        // Joining: yourself only; a private camp needs its invite code.
-        allow create: if isAuthenticated() && uid == request.auth.uid
+        // A member record must match an atomic membership update. Private camps
+        // require the invite code stored on the member record.
+        allow create: if isAuthenticated()
+                      && uid == request.auth.uid
+                      && uid in getAfter(/databases/$(database)/documents/camps/$(campId)).data.memberIds
                       && (getAfter(/databases/$(database)/documents/camps/$(campId)).data.ownerId == request.auth.uid
-                          || get(/databases/$(database)/documents/camps/$(campId)).data.isPublic == true
-                          || request.resource.data.code == get(/databases/$(database)/documents/camps/$(campId)).data.inviteCode);
-        allow delete: if isAuthenticated() && (uid == request.auth.uid || canManageCamp(campId));
+                          || getAfter(/databases/$(database)/documents/camps/$(campId)).data.isPublic == true
+                          || request.resource.data.code == getAfter(/databases/$(database)/documents/camps/$(campId)).data.inviteCode);
+        allow delete: if isAuthenticated()
+                      && ((uid == request.auth.uid
+                           && !(uid in getAfter(/databases/$(database)/documents/camps/$(campId)).data.memberIds))
+                          || canManageCamp(campId));
       }
 
       match /tasks/{tid} {
         allow read: if isMember(campId);
         allow create, delete: if canManageCamp(campId);
         allow update: if canManageCamp(campId)
-                      || (isMember(campId)
-                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doneBy']));
+                      || (isMember(campId) && isSelfTaskCompletionChange());
       }
 
       match /messages/{mid} {
