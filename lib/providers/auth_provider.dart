@@ -144,6 +144,7 @@ class UserAuthProvider extends ChangeNotifier {
                   ? UserRole.admin
                   : UserRole.student,
           academicYear: j['year'] as String?,
+          program: j['program'] as String?,
           studentId: j['sid'] as String?,
           phone: j['phone'] as String?,
           bio: j['bio'] as String?,
@@ -189,6 +190,7 @@ class UserAuthProvider extends ChangeNotifier {
           'name': u.displayName,
           'role': u.role == UserRole.superAdmin ? 'superAdmin' : (u.role == UserRole.admin ? 'admin' : 'student'),
           'year': u.academicYear,
+          'program': u.program,
           'sid': u.studentId,
           'phone': u.phone,
           'bio': u.bio,
@@ -306,6 +308,7 @@ class UserAuthProvider extends ChangeNotifier {
     required String password,
     required String displayName,
     required String academicYear,
+    required String program,
     String? phone,
   }) async {
     _setLoading(true);
@@ -317,6 +320,7 @@ class UserAuthProvider extends ChangeNotifier {
         password: password,
         displayName: displayName,
         academicYear: academicYear,
+        program: program,
         phone: phone,
       );
 
@@ -373,6 +377,7 @@ class UserAuthProvider extends ChangeNotifier {
     required String phone,
     required String bio,
     String? academicYear,
+    String? program,
     String? department,
     String? photoUrl,
     bool removePhoto = false,
@@ -388,6 +393,7 @@ class UserAuthProvider extends ChangeNotifier {
         'phone': phone.trim(),
         'bio': bio.trim(),
         if (academicYear != null) 'academicYear': academicYear,
+        if (program != null) 'program': program,
         if (department != null) 'department': department,
         if (removePhoto) 'photoUrl': FieldValue.delete() else if (photoUrl != null) 'photoUrl': photoUrl,
       };
@@ -400,6 +406,7 @@ class UserAuthProvider extends ChangeNotifier {
         phone: phone.trim(),
         bio: bio.trim(),
         academicYear: academicYear,
+        program: program,
         department: department,
         photoUrl: photoUrl,
         clearPhoto: removePhoto,
