@@ -1192,7 +1192,33 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
                     Text(widget.file.title,
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                     if (_pages > 0)
-                      Text('صفحة $_current من $_pages • ${(_current * 100 / _pages).round()}%', style: TextStyle(fontSize: 11, color: theme.hintColor)),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: _jump,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.menu_book_rounded, size: 12, color: AppColors.primary),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '$_current / $_pages  •  ${(_current * 100 / _pages).round()}%',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.edit_rounded, size: 10, color: AppColors.primary),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1283,7 +1309,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> with SingleTickerProv
     return _glass(
       radius: 22,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Row(
           children: [
             IconButton(
