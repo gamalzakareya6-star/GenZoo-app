@@ -55,14 +55,14 @@ class HomeScreen extends StatelessWidget {
               child: FadeSlideIn(
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color.lerp(AppColors.palette.primaryDark, Colors.black, 0.35)!, AppColors.palette.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(26),
                   ),
                   child: Row(
                     children: [
@@ -99,7 +99,7 @@ class HomeScreen extends StatelessWidget {
             // Category Filter Pills
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 52,
+                height: 56,
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   scrollDirection: Axis.horizontal,
@@ -190,10 +190,10 @@ class HomeScreen extends StatelessWidget {
 
     return PressableScale(
       child: Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         side: BorderSide(
           color: item.isPinned
               ? AppColors.accent.withOpacity(0.6)
@@ -216,7 +216,7 @@ class HomeScreen extends StatelessWidget {
             child: ColoredBox(color: stripe.withOpacity(0.85)),
           ),
           Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 16, 16),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 16, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

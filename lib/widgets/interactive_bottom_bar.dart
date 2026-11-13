@@ -56,25 +56,25 @@ class InteractiveBottomBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
         child: Container(
-          height: 70,
+          height: 72,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(30),
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(26),
             boxShadow: [
               BoxShadow(
                 color: isDark
                     ? Colors.black.withOpacity(0.45)
                     : AppColors.primary.withOpacity(0.14),
-                blurRadius: 24,
+                blurRadius: 28,
                 offset: const Offset(0, 8),
               ),
             ],
             border: Border.all(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.grey.withOpacity(0.15),
+                  ? Colors.white.withOpacity(0.07)
+                  : const Color(0xFFE9EDF3),
             ),
           ),
           child: LayoutBuilder(
@@ -102,7 +102,7 @@ class InteractiveBottomBar extends StatelessWidget {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(21),
                               boxShadow: [
                                 BoxShadow(
                                   color: AppColors.primary.withOpacity(0.35),
@@ -182,7 +182,7 @@ class _NavItem extends StatelessWidget {
             Transform.translate(
               offset: Offset(0, -2.5 * t),
               child: Transform.scale(
-                scale: 1 + 0.16 * t,
+                scale: 1 + 0.12 * t,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -222,7 +222,7 @@ class _NavItem extends StatelessWidget {
                 fontSize: 10.5,
                 height: 1.1,
                 color: color,
-                fontWeight: t > 0.5 ? FontWeight.bold : FontWeight.w500,
+                fontWeight: t > 0.5 ? FontWeight.w800 : FontWeight.w600,
               ),
             ),
           ],
