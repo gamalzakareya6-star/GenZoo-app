@@ -34,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
       TextEditingController();
 
   String _selectedYear = AppConstants.academicYears.first;
+  String _selectedProgram = AppConstants.academicPrograms.first;
 
   @override
   void initState() {
@@ -121,6 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
         displayName: _nameController.text.trim(),
         academicYear: _selectedYear,
+        program: _selectedProgram,
         phone: normalizePhone(_phoneController.text),
       );
     } else {
@@ -425,6 +427,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                   _selectedYear = value;
                                 });
                               }
+                            },
+                          ),
+                          const SizedBox(height: 14),
+
+                          DropdownButtonFormField<String>(
+                            value: _selectedProgram,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'البرنامج الدراسي',
+                              prefixIcon: Icon(Icons.school_outlined),
+                            ),
+                            items: AppConstants.academicPrograms.map((program) =>
+                              DropdownMenuItem<String>(value: program, child: Text(program, overflow: TextOverflow.ellipsis))
+                            ).toList(),
+                            onChanged: (value) {
+                              if (value != null) setState(() => _selectedProgram = value);
                             },
                           ),
                           const SizedBox(height: 14),
