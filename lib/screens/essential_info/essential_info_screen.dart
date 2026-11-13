@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../providers/feature_flags.dart';
 import '../camps/camps_screen.dart';
 import '../forest/forest_screen.dart';
+import '../ibn_haytham/ibn_haytham_screen.dart';
 import '../materials/subject_opinions_screen.dart';
 import '../study/study_schedule_screen.dart';
 import 'gpa_calculator_screen.dart';
@@ -227,6 +228,14 @@ class _StudyToolsTab extends StatelessWidget {
           subtitle: 'ذاكر مع زملائك: مهام ومواعيد وتقدّم الجميع',
           enabled: flags.isOn(FeatureFlags.studyCamps),
           onOpen: () => Navigator.push(context, AppRoute.fadeSlide(const CampsScreen())),
+        ),
+        _ToolCard(
+          icon: Icons.school_rounded,
+          color: AppColors.primary,
+          title: 'ابن الهيثم',
+          subtitle: 'ادخل منصة الكلية من غير ما تحتاج وضع التصفح الخفي',
+          enabled: true,
+          onOpen: () => Navigator.push(context, AppRoute.fadeSlide(const IbnHaythamScreen())),
         ),
       ],
     );

@@ -51,6 +51,7 @@ dependencies:
   timezone: any
   record: ^6.0.0
   audioplayers: ^6.1.0
+  webview_flutter: ^4.10.0
 
   # UI Enhancement Icons
   cupertino_icons: ^1.0.8
