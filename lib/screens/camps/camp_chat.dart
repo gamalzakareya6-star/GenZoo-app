@@ -664,21 +664,20 @@ class _Bubble extends StatelessWidget {
         ),
       );
 
+    final avatar = Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 4, start: 6, end: 6),
+      child: UserAvatar(name: msg.name, photoUrl: msg.photo, uid: msg.uid, radius: 14),
+    );
+
     return Align(
       alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
-      child: mine
-          ? bubble
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(bottom: 4, end: 6),
-                  child: UserAvatar(name: msg.name, photoUrl: msg.photo, uid: msg.uid, radius: 14),
-                ),
-                Flexible(child: bubble),
-              ],
-            ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: mine
+            ? [Flexible(child: bubble), avatar]
+            : [avatar, Flexible(child: bubble)],
+      ),
     );
   }
 }
