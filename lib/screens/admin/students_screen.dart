@@ -64,6 +64,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                         title: Text(u.displayName),
                         subtitle: Text([
                           if (u.academicYear != null) u.academicYear!,
+                          if (u.program != null) u.program!,
                           if (u.department != null) u.department!,
                           phone.isEmpty ? 'لا يوجد رقم' : phone,
                         ].join(' • '), style: const TextStyle(fontSize: 12)),

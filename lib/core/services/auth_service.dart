@@ -74,6 +74,7 @@ class AuthService {
     required String password,
     required String displayName,
     required String academicYear,
+    required String program,
     String? phone,
   }) async {
     final result =
@@ -94,6 +95,7 @@ class AuthService {
       displayName: displayName.trim(),
       role: UserRole.student,
       academicYear: academicYear,
+      program: program,
       phone: phone,
       createdAt: DateTime.now(),
     );

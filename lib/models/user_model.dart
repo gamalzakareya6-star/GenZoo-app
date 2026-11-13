@@ -8,6 +8,7 @@ class AppUser {
   final String displayName;
   final UserRole role;
   final String? academicYear;
+  final String? program;
   final String? studentId;
   final String? phone;
   final String? bio;
@@ -21,6 +22,7 @@ class AppUser {
     required this.displayName,
     this.role = UserRole.student,
     this.academicYear,
+    this.program,
     this.studentId,
     this.phone,
     this.bio,
@@ -32,6 +34,7 @@ class AppUser {
   AppUser copyWith({
     String? displayName,
     String? academicYear,
+    String? program,
     String? phone,
     String? bio,
     String? department,
@@ -44,6 +47,7 @@ class AppUser {
         displayName: displayName ?? this.displayName,
         role: role,
         academicYear: academicYear ?? this.academicYear,
+        program: program ?? this.program,
         studentId: studentId,
         phone: phone ?? this.phone,
         bio: bio ?? this.bio,
@@ -69,6 +73,7 @@ class AppUser {
               ? UserRole.admin
               : UserRole.student,
       academicYear: data['academicYear'] as String?,
+      program: data['program'] as String?,
       studentId: data['studentId'] as String?,
       phone: data['phone'] as String?,
       bio: data['bio'] as String?,
@@ -85,6 +90,7 @@ class AppUser {
       'displayName': displayName,
       'role': role == UserRole.superAdmin ? 'superAdmin' : (role == UserRole.admin ? 'admin' : 'student'),
       'academicYear': academicYear,
+      if (program != null) 'program': program,
       'studentId': studentId,
       if (phone != null) 'phone': phone,
       if (bio != null) 'bio': bio,
