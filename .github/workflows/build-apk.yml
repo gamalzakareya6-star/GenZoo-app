@@ -12,9 +12,9 @@ permissions:
   contents: write # publish the APK as a GitHub Release (in-app updates)
 
 jobs:
-  # Once Shorebird is set up (SHOREBIRD_TOKEN secret + shorebird.yaml), a push
-  # is delivered as a small patch by shorebird-patch.yml, so a full APK is only
-  # built when this workflow is started manually (new base release).
+  # Once Shorebird is set up, Dart/assets changes use Shorebird patches.
+  # Firestore rules changes force a full APK build because rules are not part
+  # of the Dart patch delivered to already-installed apps.
   decide:
     runs-on: ubuntu-latest
     env:
