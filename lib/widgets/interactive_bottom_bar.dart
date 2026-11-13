@@ -58,23 +58,21 @@ class InteractiveBottomBar extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
         child: Container(
-          height: 70,
+          height: 66,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(30),
+            color: isDark ? const Color(0xFF1C2023) : const Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.45)
-                    : AppColors.primary.withOpacity(0.14),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+                color: Colors.black.withOpacity(isDark ? 0.20 : 0.045),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
               ),
             ],
             border: Border.all(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.grey.withOpacity(0.15),
+                  ? Colors.white.withOpacity(0.06)
+                  : const Color(0xFFE7E9EC),
             ),
           ),
           child: LayoutBuilder(
@@ -88,7 +86,7 @@ class InteractiveBottomBar extends StatelessWidget {
                     final pos = _position();
                     return Stack(
                       children: [
-                        // Sliding gradient pill.
+                        // Soft, single-color selection indicator.
                         Positioned.directional(
                           textDirection: Directionality.of(context),
                           start: pos * itemW,
@@ -97,19 +95,8 @@ class InteractiveBottomBar extends StatelessWidget {
                           width: itemW,
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [AppColors.primary, AppColors.secondary],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.35),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                              color: AppColors.primary.withOpacity(isDark ? 0.24 : 0.11),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                           ),
                         ),
@@ -165,7 +152,7 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final idle = isDark ? Colors.grey.shade400 : const Color(0xFF64748B);
-    final color = Color.lerp(idle, Colors.white, t)!;
+    final color = Color.lerp(idle, AppColors.primary, t)!;
 
     return InkResponse(
       onTap: onTap,
