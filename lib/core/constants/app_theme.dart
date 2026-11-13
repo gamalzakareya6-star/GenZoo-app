@@ -109,6 +109,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        toolbarHeight: 68,
         iconTheme: IconThemeData(color: textPrimary, size: 22),
         titleTextStyle: textTheme.titleLarge,
       ),
@@ -150,6 +151,7 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
+          minimumSize: const Size(0, 52),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(controlRadius),

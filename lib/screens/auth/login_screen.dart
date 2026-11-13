@@ -8,6 +8,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../main_navigation_screen.dart';
 import '../../core/utils/phone.dart';
+import '../legal/privacy_policy_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isRegisterMode = false;
   bool _obscurePassword = true;
+  bool _acceptedPrivacy = false;
 
   final TextEditingController _emailController =
       TextEditingController();
@@ -101,6 +103,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isRegisterMode && !_acceptedPrivacy) {
+      _showMessage('يجب الموافقة على سياسة الخصوصية أولاً لإنشاء حساب.', isError: true);
+      return;
+    }
 
     final auth = Provider.of<UserAuthProvider>(
       context,
@@ -137,6 +143,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_isRegisterMode && !_acceptedPrivacy) {
+      _showMessage('يجب الموافقة على سياسة الخصوصية أولاً لإنشاء حساب.', isError: true);
+      return;
+    }
+
     final auth = Provider.of<UserAuthProvider>(
       context,
       listen: false,
@@ -235,8 +246,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Login and registration toggle
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.all(4),
                     child: Row(
@@ -256,10 +267,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: !_isRegisterMode
-                                    ? Colors.white
+                                    ? theme.colorScheme.surface
                                     : Colors.transparent,
                                 borderRadius:
-                                    BorderRadius.circular(10),
+                                    BorderRadius.circular(13),
                               ),
                               child: Text(
                                 'تسجيل الدخول',
@@ -270,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : FontWeight.w500,
                                   color: !_isRegisterMode
                                       ? AppColors.primary
-                                      : Colors.grey.shade700,
+                                      : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -291,10 +302,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: _isRegisterMode
-                                    ? Colors.white
+                                    ? theme.colorScheme.surface
                                     : Colors.transparent,
                                 borderRadius:
-                                    BorderRadius.circular(10),
+                                    BorderRadius.circular(13),
                               ),
                               child: Text(
                                 'حساب جديد',
@@ -305,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : FontWeight.w500,
                                   color: _isRegisterMode
                                       ? AppColors.primary
-                                      : Colors.grey.shade700,
+                                      : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -485,6 +496,51 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
+
+                        if (_isRegisterMode) ...[
+                          const SizedBox(height: 10),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => setState(() => _acceptedPrivacy = !_acceptedPrivacy),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: _acceptedPrivacy,
+                                    onChanged: (v) => setState(() => _acceptedPrivacy = v ?? false),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 14),
+                                      child: Wrap(
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          const Text('أوافق على '),
+                                          GestureDetector(
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              AppRoute.fadeSlide(const PrivacyPolicyScreen()),
+                                            ),
+                                            child: Text(
+                                              'سياسة الخصوصية',
+                                              style: TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: TextDecoration.underline,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
 
                         const SizedBox(height: 16),
 

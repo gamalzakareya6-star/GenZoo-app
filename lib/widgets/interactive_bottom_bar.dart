@@ -56,9 +56,9 @@ class InteractiveBottomBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
         child: Container(
-          height: 66,
+          height: 72,
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1C2023) : const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(24),
@@ -169,7 +169,7 @@ class _NavItem extends StatelessWidget {
             Transform.translate(
               offset: Offset(0, -2.5 * t),
               child: Transform.scale(
-                scale: 1 + 0.16 * t,
+                scale: 1 + 0.12 * t,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -209,7 +209,7 @@ class _NavItem extends StatelessWidget {
                 fontSize: 10.5,
                 height: 1.1,
                 color: color,
-                fontWeight: t > 0.5 ? FontWeight.bold : FontWeight.w500,
+                fontWeight: t > 0.5 ? FontWeight.w800 : FontWeight.w600,
               ),
             ),
           ],

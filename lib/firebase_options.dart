@@ -20,14 +20,13 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // Firebase Web app configuration supplied for project: genzoo-app
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDFspg2KIKMShMzMAufq2zxhxsdLFHOpds',
-    appId: '1:971349959914:web:ef26a0f3fee148037be393',
-    messagingSenderId: '971349959914',
-    projectId: 'genzoo-app',
-    authDomain: 'genzoo-app.firebaseapp.com',
-    storageBucket: 'genzoo-app.firebasestorage.app',
+    apiKey: 'AIzaSyWebPlaceholderApiKeyForGenZoo12345',
+    appId: '1:123456789012:web:abcdef123456',
+    messagingSenderId: '123456789012',
+    projectId: 'genzoo-student-portal',
+    authDomain: 'genzoo-student-portal.firebaseapp.com',
+    storageBucket: 'genzoo-student-portal.appspot.com',
   );
 
   // Values taken from android/app/google-services.json (project: genzoo-app)
@@ -39,7 +38,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'genzoo-app.firebasestorage.app',
   );
 
-  // iOS Firebase app has not yet been configured for this project.
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyIosPlaceholderApiKeyForGenZoo12345',
     appId: '1:123456789012:ios:abcdef123456789',

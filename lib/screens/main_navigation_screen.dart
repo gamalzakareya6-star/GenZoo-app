@@ -17,6 +17,7 @@ import 'quran/quran_screen.dart';
 import 'essential_info/essential_info_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
+import 'legal/privacy_policy_screen.dart';
 import '../core/services/external_pdf.dart';
 import '../core/services/prayer_service.dart';
 import '../core/services/notification_service.dart';
@@ -78,14 +79,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               children: [
                 const Text(
                   'بوابة GenZoo',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
                 ),
                 Text(
                   user.displayName,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface.withOpacity(0.58),
                   ),
                 ),
               ],
@@ -231,6 +232,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push(context, AppRoute.fadeSlide(const AppearanceScreen()));
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
+                  title: const Text('سياسة الخصوصية'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(context, AppRoute.fadeSlide(const PrivacyPolicyScreen()));
                   },
                 ),
                 ListTile(
