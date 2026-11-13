@@ -88,7 +88,7 @@ class AppTheme {
       onSurface: textPrimary,
       surfaceContainerHighest: isDark
           ? const Color(0xFF292E32)
-          : const Color(0xFFEDEF F1),
+          : const Color(0xFFEDEFF1),
     );
 
     return ThemeData(
@@ -125,7 +125,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF24292D) : const Color(0xFFEDEF F1),
+        fillColor: isDark ? const Color(0xFF24292D) : const Color(0xFFEDEFF1),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(controlRadius),
