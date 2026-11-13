@@ -71,6 +71,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       appBar: AppBar(
         title: Row(
           children: [
+            UserAvatar(name: user.displayName, photoUrl: user.photoUrl, uid: user.uid, radius: 19),
+            const SizedBox(width: 10),
             const AppLogo(size: 38, hero: true),
             const SizedBox(width: 10),
             Column(
