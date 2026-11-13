@@ -1,4 +1,4 @@
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _phone;
   late final TextEditingController _bio;
   String? _year;
+  String? _program;
   String? _dept;
   String? _photo;
   Uint8List? _newBytes;
@@ -40,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phone = TextEditingController(text: u?.phone ?? '');
     _bio = TextEditingController(text: u?.bio ?? '');
     _year = AppConstants.academicYears.contains(u?.academicYear) ? u?.academicYear : null;
+    _program = AppConstants.academicPrograms.contains(u?.program) ? u?.program : null;
     _dept = AppConstants.departments.contains(u?.department) ? u?.department : null;
     _photo = u?.photoUrl;
   }
@@ -55,11 +57,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _pickPhoto() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
-    final path = picked?.files.single.path;
-    if (path == null) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ListTile(leading: const Icon(Icons.camera_alt_outlined), title: const Text('التقاط صورة بالكاميرا'), onTap: () => Navigator.pop(ctx, ImageSource.camera)),
+        ListTile(leading: const Icon(Icons.photo_library_outlined), title: const Text('اختيار صورة من المعرض'), onTap: () => Navigator.pop(ctx, ImageSource.gallery)),
+      ])),
+    );
+    if (source == null) return;
     setState(() => _busy = true);
     try {
+      final picked = await ImagePicker().pickImage(source: source, imageQuality: 90);
+      final path = picked?.path;
+      if (path == null) return;
       final bytes = await AvatarService.prepare(path);
       setState(() {
         _newBytes = bytes;
@@ -97,6 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           phone: normalizePhone(_phone.text),
           bio: _bio.text,
           academicYear: _year,
+          program: _program,
           department: _dept,
           photoUrl: _removePhoto ? null : (_newBytes != null ? 'avatar' : _photo),
           removePhoto: _removePhoto,
@@ -184,6 +195,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: const InputDecoration(labelText: 'الفرقة الدراسية', prefixIcon: Icon(Icons.class_outlined)),
             items: [for (final y in AppConstants.academicYears) DropdownMenuItem(value: y, child: Text(y))],
             onChanged: (v) => setState(() => _year = v),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            value: _program,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'البرنامج الدراسي', prefixIcon: Icon(Icons.school_outlined)),
+            items: [for (final p in AppConstants.academicPrograms) DropdownMenuItem(value: p, child: Text(p, overflow: TextOverflow.ellipsis))],
+            onChanged: (v) => setState(() => _program = v),
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
