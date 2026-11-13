@@ -69,10 +69,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 56,
+        leading: Center(
+          child: IconButton(
+            tooltip: 'حسابي',
+            padding: EdgeInsets.zero,
+            onPressed: () => _showAccountDialog(context, user, authProvider),
+            icon: UserAvatar(
+              name: user.displayName,
+              photoUrl: user.photoUrl,
+              uid: user.uid,
+              radius: 19,
+            ),
+          ),
+        ),
         title: Row(
           children: [
-            UserAvatar(name: user.displayName, photoUrl: user.photoUrl, uid: user.uid, radius: 19),
-            const SizedBox(width: 10),
             const AppLogo(size: 38, hero: true),
             const SizedBox(width: 10),
             Column(
@@ -115,12 +127,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               },
             ),
 
-          // Profile / Account Menu
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            tooltip: 'حسابي',
-            onPressed: () => _showAccountDialog(context, user, authProvider),
-          ),
           const SizedBox(width: 8),
         ],
       ),
