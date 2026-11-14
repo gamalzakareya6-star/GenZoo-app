@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -255,6 +258,7 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
               await _tryAutoLogin();
             }
             await _tryExtractProfile();
+            await _overridePageOwnPrintButton();
           },
         ),
       )
@@ -280,6 +284,12 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
           ),
         ),
       );
+    } else if (data == 'print_request') {
+      // The platform's own "طباعة" button calls window.print(), which does
+      // nothing inside a plain WebView (no popup/print support) — we hook
+      // it to trigger our own print flow instead, so the button the
+      // student already sees on the real page just works.
+      _printCurrentPage();
     }
   }
 
@@ -607,28 +617,99 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     }
 
     if (!s.hasPrintOnPlatform && mounted) {
-      // No print button on the platform for this page (e.g. جدول الامتحانات)
-      // — offer our own screenshot-based share/save as an interim solution.
+      // No confirmed print button on the platform for this page — our own
+      // "طباعة" button (AppBar) still works everywhere via a screenshot, so
+      // point the student at it instead of a raw platform error.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('الصفحة دي مفيهاش زر طباعة على المنصة — ممكن تستخدم زر المشاركة فوق لحفظها كصورة.'),
-          action: SnackBarAction(label: 'مشاركة دلوقتي', onPressed: _shareScreenshot),
+          content: const Text('الصفحة دي مفيهاش زر طباعة أكيد على المنصة — استخدم زر الطباعة فوق، بيشتغل من التطبيق على أي صفحة.'),
+          action: SnackBarAction(label: 'اطبع دلوقتي', onPressed: _printCurrentPage),
         ),
       );
     }
   }
 
-  /// Interim fallback for pages with no print button on the real platform
-  /// (currently جدول الامتحانات): captures what's on screen and lets the
-  /// student share/save it as an image instead.
-  Future<void> _shareScreenshot() async {
+  /// Makes "طباعة"/print actually work from inside the app, two ways:
+  /// 1. A dedicated AppBar button the student can tap on any page.
+  /// 2. The platform's OWN "طباعة" buttons call window.print(), which does
+  ///    nothing inside a plain WebView — _overridePageOwnPrintButton hooks
+  ///    window.print so tapping the platform's existing button also lands
+  ///    here, instead of silently failing.
+  ///
+  /// Either way we capture what's on screen and hand it to the OS print
+  /// dialog (package:printing), which lets the student print to a real
+  /// printer OR choose "Save as PDF" — covering both printing and
+  /// downloading the page.
+  Future<void> _printCurrentPage() async {
+    final bytes = await _captureScreenshotBytes();
+    if (bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّرت قراءة الصفحة للطباعة، جرّب تاني بعد ما الصفحة تخلص تحميل.')),
+      );
+      return;
+    }
+    try {
+      final image = pw.MemoryImage(bytes);
+      final doc = pw.Document();
+      doc.addPage(
+        pw.Page(
+          build: (ctx) => pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),
+        ),
+      );
+      await Printing.layoutPdf(onLayout: (_) => doc.save(), name: 'ibn_haytham.pdf');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّرت الطباعة — جرّب زر المشاركة بدل منها.')),
+      );
+    }
+  }
+
+  /// Hooks window.print() on the platform's own page so its existing
+  /// "طباعة" buttons trigger our print flow (see _printCurrentPage) instead
+  /// of doing nothing inside the WebView. Re-applied on every page load
+  /// since each navigation gets a fresh JS context.
+  Future<void> _overridePageOwnPrintButton() async {
+    const js = r'''
+    (function() {
+      try {
+        window.print = function() {
+          if (window.IbnHaytham) window.IbnHaytham.postMessage('print_request');
+        };
+      } catch (e) {}
+    })();
+    ''';
+    try {
+      await _controller!.runJavaScript(js);
+    } catch (_) {}
+  }
+
+  Future<Uint8List?> _captureScreenshotBytes() async {
     try {
       final boundary = _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
+      if (boundary == null) return null;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final bytes = byteData.buffer.asUint8List();
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Lets the student share/save the current page as an image (e.g. to send
+  /// over WhatsApp) — separate from _printCurrentPage, which produces a
+  /// proper printable/savable PDF via the OS print dialog.
+  Future<void> _shareScreenshot() async {
+    final bytes = await _captureScreenshotBytes();
+    if (bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّرت المشاركة، جرّب تاخد سكرين شوت عادي من جهازك.')),
+      );
+      return;
+    }
+    try {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/ibn_haytham_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(bytes);
@@ -655,6 +736,11 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.print_rounded),
+            tooltip: 'طباعة / تحميل كـ PDF',
+            onPressed: _printCurrentPage,
+          ),
           IconButton(
             icon: const Icon(Icons.calculate_rounded),
             tooltip: 'اربط معدلك بحاسبة الـGPA',
