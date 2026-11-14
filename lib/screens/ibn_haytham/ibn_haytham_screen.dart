@@ -5,11 +5,15 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/ibn_haytham_service.dart';
+import '../../providers/gpa_provider.dart';
+import '../../widgets/animations.dart';
+import '../essential_info/gpa_calculator_screen.dart';
 
 /// منصة ابن الهيثم — entry point.
 ///
@@ -260,14 +264,112 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   }
 
   void _onChannelMessage(JavaScriptMessage message) {
-    // Reserved for when the real HTML selectors are known: the extraction
-    // script will postMessage the student's name/department/grades here
-    // via IbnHaytham.postMessage(...). Kept generic until then.
     final data = message.message;
     if (data.startsWith('name:')) {
       setState(() => _studentName = data.substring(5));
     } else if (data.startsWith('dept:')) {
       setState(() => _studentDept = data.substring(5));
+    } else if (data.startsWith('gpa_sync:')) {
+      _handleGpaSyncResult(data.substring('gpa_sync:'.length));
+    } else if (data == 'gpa_sync_fail') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'مقدرتش ألاقي المعدل التراكمي في الصفحة دي — افتح "تقدير المقررات" الأول وبعدين جرّب تاني.',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleGpaSyncResult(String rawJson) {
+    double? gpa;
+    double? credits;
+    try {
+      final match = RegExp(r'"gpa":"?([\d.]*)"?').firstMatch(rawJson);
+      final creditsMatch = RegExp(r'"credits":"?([\d.]*)"?').firstMatch(rawJson);
+      final gpaStr = match?.group(1);
+      final creditsStr = creditsMatch?.group(1);
+      if (gpaStr != null && gpaStr.isNotEmpty) gpa = double.tryParse(gpaStr);
+      if (creditsStr != null && creditsStr.isNotEmpty) credits = double.tryParse(creditsStr);
+    } catch (_) {}
+
+    if (gpa == null && credits == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اتلاقت أرقام مش مفهومة في الصفحة — جرّب تدخل المعدل يدويًا في الحاسبة.')),
+      );
+      return;
+    }
+
+    context.read<GpaProvider>().setHistory(gpa: gpa, percent: null, credits: credits);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'تم ربط ${gpa != null ? 'المعدل التراكمي ($gpa)' : ''}${(gpa != null && credits != null) ? ' و' : ''}${credits != null ? 'الساعات المسجلة ($credits)' : ''} بحاسبة الـGPA.',
+        ),
+        action: SnackBarAction(
+          label: 'افتح الحاسبة',
+          onPressed: () => Navigator.push(context, AppRoute.fadeSlide(const GpaCalculatorScreen())),
+        ),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  /// Reads "المعدل التراكمي" (cumulative GPA) and the registered/earned
+  /// credit-hours summary line from the "تقدير المقررات" results page and
+  /// feeds them straight into the GPA calculator's "previous" totals, so
+  /// the student doesn't have to copy numbers by hand.
+  Future<void> _syncGpaToCalculator() async {
+    const js = r'''
+    (function() {
+      function findValueAfterLabel(labels) {
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        var node;
+        while ((node = walker.nextNode())) {
+          var t = node.nodeValue;
+          if (!t) continue;
+          for (var i = 0; i < labels.length; i++) {
+            var idx = t.indexOf(labels[i]);
+            if (idx === -1) continue;
+            var rest = t.slice(idx + labels[i].length);
+            var m = rest.match(/[0-9]+(?:\.[0-9]+)?/);
+            if (m) return m[0];
+            var row = node.parentElement ? node.parentElement.closest('tr,div,li,td') || node.parentElement : null;
+            if (row) {
+              var full = row.textContent || '';
+              var idx2 = full.indexOf(labels[i]);
+              if (idx2 !== -1) {
+                var rest2 = full.slice(idx2 + labels[i].length);
+                var m2 = rest2.match(/[0-9]+(?:\.[0-9]+)?/);
+                if (m2) return m2[0];
+              }
+            }
+          }
+        }
+        return null;
+      }
+      var gpa = findValueAfterLabel(['المعدل التراكمي']);
+      var credits = findValueAfterLabel(['الساعات الحاصل عليها', 'الساعات المسجله', 'الساعات المسجلة']);
+      if (gpa || credits) {
+        if (window.IbnHaytham) {
+          window.IbnHaytham.postMessage('gpa_sync:' + JSON.stringify({ gpa: gpa, credits: credits }));
+        }
+      } else if (window.IbnHaytham) {
+        window.IbnHaytham.postMessage('gpa_sync_fail');
+      }
+    })();
+    ''';
+    try {
+      await _controller!.runJavaScript(js);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر قراءة المعدل من الصفحة الحالية.')),
+      );
     }
   }
 
@@ -412,17 +514,44 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
         '''
     (function() {
       var keywords = $keywordsJs;
-      var all = Array.prototype.slice.call(document.querySelectorAll('a, button, li, span, div'));
+      // Only look at leaf-ish elements (no element children) so we match the
+      // exact element actually holding the label text, not some huge
+      // container that happens to contain it further down.
+      var all = Array.prototype.slice.call(document.querySelectorAll('*'));
       for (var i = 0; i < all.length; i++) {
         var el = all[i];
+        if (el.children && el.children.length > 0) continue;
         var text = (el.textContent || '').trim();
         if (!text || text.length > 60) continue;
         for (var k = 0; k < keywords.length; k++) {
-          if (text.indexOf(keywords[k]) !== -1) {
-            var clickable = el.closest('a, button') || el;
-            clickable.click();
-            return 'clicked';
+          if (text.indexOf(keywords[k]) === -1) continue;
+
+          // The real click handler is often on an ancestor (a <li> with an
+          // onclick, or a wrapping <a>) rather than on the text node's own
+          // element, which just highlights/selects when tapped directly.
+          // Climb up looking for the real clickable wrapper.
+          var target = el;
+          for (var up = 0; up < 6 && target; up++) {
+            var tag = (target.tagName || '').toLowerCase();
+            var href = target.getAttribute && target.getAttribute('href');
+            var onclickAttr = target.getAttribute && target.getAttribute('onclick');
+            var cursor = '';
+            try { cursor = window.getComputedStyle(target).cursor; } catch (e) {}
+            var looksClickable = (tag === 'a' && href && href !== '#' && href.indexOf('javascript:void') === -1) ||
+              tag === 'a' || tag === 'button' || !!onclickAttr || cursor === 'pointer';
+            if (looksClickable) break;
+            if (!target.parentElement) break;
+            target = target.parentElement;
           }
+          if (!target) target = el;
+
+          ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(function (type) {
+            try {
+              target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+            } catch (e) {}
+          });
+          try { target.click(); } catch (e) {}
+          return 'clicked:' + (target.tagName || '');
         }
       }
       return 'not_found';
@@ -505,6 +634,11 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calculate_rounded),
+            tooltip: 'اربط معدلك بحاسبة الـGPA',
+            onPressed: _syncGpaToCalculator,
+          ),
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),
             tooltip: 'مشاركة/حفظ الصفحة كصورة',
