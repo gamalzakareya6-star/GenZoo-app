@@ -187,11 +187,13 @@ class _Shortcut {
 }
 
 const _shortcuts = <_Shortcut>[
-  _Shortcut('استمارة التسجيل', Icons.assignment_rounded, ['استمارة التسجيل'], hasPrintOnPlatform: true),
-  _Shortcut('تقدير المقررات', Icons.grade_rounded, ['تقدير المقررات', 'تقدير مقررات']),
-  _Shortcut('الجدول الدراسي', Icons.calendar_view_week_rounded, ['الجدول الدراسي'], hasPrintOnPlatform: true),
-  _Shortcut('التسجيل الأكاديمي', Icons.how_to_reg_rounded, ['التسجيل الأكاديمي', 'التسجيل الاكاديمي'], seasonalOnly: true),
-  _Shortcut('جدول الامتحانات', Icons.event_note_rounded, ['جدول الامتحانات']),
+  _Shortcut('استمارة التسجيل', Icons.assignment_rounded, ['استمارة التسجيل', 'استمارة تسجيل'], hasPrintOnPlatform: true),
+  _Shortcut('تقدير المقررات', Icons.grade_rounded, ['تقديرات المقررات', 'تقدير المقررات', 'تقدير مقررات']),
+  _Shortcut('الجدول الدراسي', Icons.calendar_view_week_rounded, ['الجدول الدراسي', 'الجدول الدراسى'], hasPrintOnPlatform: true),
+  _Shortcut('التسجيل الأكاديمي', Icons.how_to_reg_rounded,
+      ['التسجيل الأكاديمي', 'التسجيل الأكاديمى', 'التسجيل الاكاديمي', 'التسجيل الاكاديمى'],
+      seasonalOnly: true),
+  _Shortcut('جدول الامتحانات', Icons.event_note_rounded, ['جدول الامتحانات'], hasPrintOnPlatform: true),
 ];
 
 const _platformUrl = 'https://stdch.menofia.education/static/index.html';
@@ -269,16 +271,33 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     }
   }
 
-  /// Heuristic auto-login: find the password field, find the nearest text
-  /// input before it inside the same form (the National ID field, whatever
-  /// its name/id/class happens to be), fill both, and submit the form.
-  /// This stays robust even if the platform renames its fields, as long as
-  /// the form still has exactly one password input.
+  /// Heuristic auto-login: selects the "Student" radio option (the login
+  /// page also offers "System User" / "Staff", with "System User" selected
+  /// by default — students must switch to "Student" first), finds the
+  /// password field, finds the nearest text input before it inside the same
+  /// form (the National ID field, whatever its name/id/class happens to
+  /// be), fills both, and submits the form. This stays robust even if the
+  /// platform renames its fields, as long as the form still has exactly one
+  /// password input and a radio option labelled "Student".
   Future<void> _tryAutoLogin() async {
     final js =
         '''
     (function() {
       try {
+        var radios = Array.prototype.slice.call(document.querySelectorAll('input[type="radio"]'));
+        for (var r = 0; r < radios.length; r++) {
+          var radio = radios[r];
+          var label = '';
+          if (radio.labels && radio.labels.length) { label = radio.labels[0].textContent || ''; }
+          else if (radio.parentElement) { label = radio.parentElement.textContent || ''; }
+          if (/student/i.test(label.trim())) {
+            radio.checked = true;
+            radio.click();
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+            break;
+          }
+        }
+
         var pass = document.querySelector('input[type="password"]');
         if (!pass) return 'no_password_field';
         var form = pass.closest('form') || document;
@@ -319,12 +338,67 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     }
   }
 
-  /// Placeholder — will be completed once the real post-login page HTML is
-  /// available, to read the student's name/department and post them back
-  /// via the IbnHaytham channel. For now this is a no-op so nothing breaks.
+  /// Extracts the student's name + department (البرنامج) from the small
+  /// profile card that the platform shows in its right-hand sidebar on
+  /// EVERY page (not just one specific tab), right under "البرنامج :".
+  /// This is text-based rather than tied to specific class names/ids, so it
+  /// keeps working even if the platform's own markup/styling changes —
+  /// only the Arabic label "البرنامج" needs to still appear near the name.
+  /// The name/department text is read in full even though the sidebar
+  /// visually truncates it with "..." (that's just CSS, not the real text).
   Future<void> _tryExtractProfile() async {
-    // TODO: fill in real selectors once the saved HTML sample arrives, e.g.
-    // IbnHaytham.postMessage('name:' + document.querySelector('...').textContent)
+    const js = r'''
+    (function() {
+      try {
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        var node, progNode = null;
+        while ((node = walker.nextNode())) {
+          if (node.nodeValue && node.nodeValue.indexOf('البرنامج') !== -1) {
+            progNode = node;
+            break;
+          }
+        }
+        if (!progNode) return 'no_program_label';
+
+        var dept = progNode.nodeValue.split(':').slice(1).join(':').trim();
+        var container = progNode.parentElement;
+        var name = null;
+
+        for (var up = 0; up < 5 && container && (!dept || !name); up++) {
+          var lines = (container.textContent || '')
+            .split('\n')
+            .map(function (s) { return s.replace(/\s+/g, ' ').trim(); })
+            .filter(Boolean);
+          for (var i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf('البرنامج') !== -1) {
+              if (!dept) {
+                var afterColon = lines[i].split(':').slice(1).join(':').trim();
+                if (afterColon) dept = afterColon;
+              }
+              if (!name && i > 0) {
+                var candidate = lines[i - 1];
+                if (candidate && candidate.indexOf(':') === -1 && candidate.length > 3 && candidate.length < 80) {
+                  name = candidate;
+                }
+              }
+              break;
+            }
+          }
+          container = container.parentElement;
+        }
+
+        if (name && window.IbnHaytham) window.IbnHaytham.postMessage('name:' + name);
+        if (dept && window.IbnHaytham) window.IbnHaytham.postMessage('dept:' + dept);
+        return 'ok';
+      } catch (e) { return 'error:' + e.message; }
+    })();
+    ''';
+    try {
+      await _controller!.runJavaScript(js);
+    } catch (_) {
+      // Non-fatal — the student can still use the platform's own pages
+      // normally even if the app couldn't read the name/department.
+    }
   }
 
   String _jsStr(String s) {
@@ -365,18 +439,19 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
 
     if (s.seasonalOnly && mounted) {
       // Academic registration only works in specific windows of the year;
-      // the platform itself shows an error outside those windows. We can't
-      // reliably read its exact wording without the real HTML yet, so for
-      // now we give the student a clear heads-up instead of a confusing
-      // raw platform error.
+      // outside those windows the platform itself shows its own native
+      // "انتهاء فترة التسجيل" (registration period ended) alert box, which
+      // the WebView displays as-is. This banner just adds a clearer
+      // explanation alongside it so the student isn't confused by a bare
+      // platform alert.
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'ملحوظة: "التسجيل الأكاديمي" بيشتغل بس في فترات محددة من السنة. لو ظهرت رسالة خطأ على المنصة، فده معناه إن الفترة الحالية لسه مقفولة.',
+            'ملحوظة: "التسجيل الأكاديمي" بيشتغل بس في فترات محددة من السنة. لو ظهرلك تنبيه "انتهاء فترة التسجيل"، فده معناه إن الفترة الحالية مقفولة دلوقتي وهتتفتح تاني في موعدها الرسمي.',
           ),
-          duration: Duration(seconds: 5),
+          duration: Duration(seconds: 6),
         ),
       );
     }
