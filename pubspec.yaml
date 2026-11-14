@@ -43,6 +43,7 @@ dependencies:
   share_plus: ^10.1.4
   pdfx: ^2.9.2
   pdf: ^3.11.1
+  printing: ^5.13.4
   file_picker: ^8.1.2
   image: ^4.2.0
   image_picker: ^1.1.2
