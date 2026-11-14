@@ -287,9 +287,9 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     } else if (data == 'print_request') {
       // The platform's own "طباعة" button calls window.print(), which does
       // nothing inside a plain WebView (no popup/print support) — we hook
-      // it to trigger our own print flow instead, so the button the
+      // it to trigger our own capture flow instead, so the button the
       // student already sees on the real page just works.
-      _printCurrentPage();
+      _doPrintCapture();
     }
   }
 
@@ -539,15 +539,18 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     return "'$escaped'";
   }
 
-  Future<void> _openShortcut(_Shortcut s) async {
-    final keywordsJs = '[${s.matchKeywords.map(_jsStr).join(',')}]';
-    final js =
-        '''
+  /// Builds the JS that finds the leaf element whose text contains one of
+  /// [keywords], climbs up to the real clickable ancestor (an <a>/<button>,
+  /// something with an onclick, or anything styled cursor:pointer — since
+  /// the click handler is often on a wrapping element, not the text node's
+  /// own element, which on this platform just highlights/selects text when
+  /// tapped directly), and dispatches a full mouse-event sequence on it.
+  /// Returns 'clicked:<TAG>' or 'not_found'.
+  String _clickByKeywordsJs(List<String> keywords) {
+    final keywordsJs = '[${keywords.map(_jsStr).join(',')}]';
+    return '''
     (function() {
       var keywords = $keywordsJs;
-      // Only look at leaf-ish elements (no element children) so we match the
-      // exact element actually holding the label text, not some huge
-      // container that happens to contain it further down.
       var all = Array.prototype.slice.call(document.querySelectorAll('*'));
       for (var i = 0; i < all.length; i++) {
         var el = all[i];
@@ -557,10 +560,6 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
         for (var k = 0; k < keywords.length; k++) {
           if (text.indexOf(keywords[k]) === -1) continue;
 
-          // The real click handler is often on an ancestor (a <li> with an
-          // onclick, or a wrapping <a>) rather than on the text node's own
-          // element, which just highlights/selects when tapped directly.
-          // Climb up looking for the real clickable wrapper.
           var target = el;
           for (var up = 0; up < 6 && target; up++) {
             var tag = (target.tagName || '').toLowerCase();
@@ -588,14 +587,25 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
       return 'not_found';
     })();
     ''';
+  }
+
+  /// Runs [_clickByKeywordsJs] and reports whether a match was clicked.
+  Future<bool> _clickByKeywords(List<String> keywords) async {
     try {
-      final result = await _controller!.runJavaScriptReturningResult(js);
-      if (result.toString().contains('not_found') && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('مقدرتش ألاقي "${s.label}" في الصفحة الحالية — جرّب ترجع للصفحة الرئيسية للمنصة.')),
-        );
-      }
-    } catch (_) {}
+      final result = await _controller!.runJavaScriptReturningResult(_clickByKeywordsJs(keywords));
+      return !result.toString().contains('not_found');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _openShortcut(_Shortcut s) async {
+    final clicked = await _clickByKeywords(s.matchKeywords);
+    if (!clicked && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('مقدرتش ألاقي "${s.label}" في الصفحة الحالية — جرّب ترجع للصفحة الرئيسية للمنصة.')),
+      );
+    }
 
     if (s.seasonalOnly && mounted) {
       // Academic registration only works in specific windows of the year;
@@ -629,18 +639,30 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     }
   }
 
-  /// Makes "طباعة"/print actually work from inside the app, two ways:
-  /// 1. A dedicated AppBar button the student can tap on any page.
-  /// 2. The platform's OWN "طباعة" buttons call window.print(), which does
-  ///    nothing inside a plain WebView — _overridePageOwnPrintButton hooks
-  ///    window.print so tapping the platform's existing button also lands
-  ///    here, instead of silently failing.
-  ///
-  /// Either way we capture what's on screen and hand it to the OS print
-  /// dialog (package:printing), which lets the student print to a real
-  /// printer OR choose "Save as PDF" — covering both printing and
-  /// downloading the page.
+  /// Keywords matching the platform's own "طباعة" print buttons (seen on
+  /// استمارة التسجيل، الجدول الدراسي، جدول الامتحانات). Both spellings are
+  /// included since the platform's own screenshots show "طباعه" (no taa
+  /// marbuta) in some places.
+  static const _printButtonKeywords = ['طباعة', 'طباعه', 'Print'];
+
+  /// The AppBar print button: first tries to actually press the real
+  /// "طباعة" button already on the current page (same robust find-and-click
+  /// used for the shortcut chips) — that way the platform's own print
+  /// logic runs first (it may apply print-specific styling, hide the
+  /// sidebar, etc. before calling window.print()), which we've hooked (see
+  /// _overridePageOwnPrintButton) to land in _doPrintCapture below. If the
+  /// current page has no such button (e.g. تقدير المقررات), falls back to
+  /// capturing the page directly ourselves.
   Future<void> _printCurrentPage() async {
+    final clickedRealButton = await _clickByKeywords(_printButtonKeywords);
+    if (clickedRealButton) return; // _doPrintCapture runs via the print_request channel message.
+    await _doPrintCapture();
+  }
+
+  /// Captures what's on screen and hands it to the OS print dialog
+  /// (package:printing), which lets the student print to a real printer OR
+  /// choose "Save as PDF" — covering both printing and downloading.
+  Future<void> _doPrintCapture() async {
     final bytes = await _captureScreenshotBytes();
     if (bytes == null) {
       if (!mounted) return;
@@ -667,9 +689,10 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   }
 
   /// Hooks window.print() on the platform's own page so its existing
-  /// "طباعة" buttons trigger our print flow (see _printCurrentPage) instead
-  /// of doing nothing inside the WebView. Re-applied on every page load
-  /// since each navigation gets a fresh JS context.
+  /// "طباعة" buttons — whether tapped directly by the student or triggered
+  /// by _printCurrentPage above — land in _doPrintCapture instead of doing
+  /// nothing (a plain WebView has no built-in print handling). Re-applied
+  /// on every page load since each navigation gets a fresh JS context.
   Future<void> _overridePageOwnPrintButton() async {
     const js = r'''
     (function() {
