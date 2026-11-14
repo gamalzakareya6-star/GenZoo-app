@@ -226,11 +226,18 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   bool _autoFillTried = false;
   String? _studentName;
   String? _studentDept;
+  Timer? _printFallbackTimer;
 
   @override
   void initState() {
     super.initState();
     _initController();
+  }
+
+  @override
+  void dispose() {
+    _printFallbackTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _initController() async {
@@ -288,7 +295,10 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
       // The platform's own "طباعة" button calls window.print(), which does
       // nothing inside a plain WebView (no popup/print support) — we hook
       // it to trigger our own capture flow instead, so the button the
-      // student already sees on the real page just works.
+      // student already sees on the real page just works. Cancel the
+      // safety-net timer from _printCurrentPage since the real signal
+      // arrived (avoids printing twice).
+      _printFallbackTimer?.cancel();
       _doPrintCapture();
     }
   }
@@ -555,7 +565,9 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
       for (var i = 0; i < all.length; i++) {
         var el = all[i];
         if (el.children && el.children.length > 0) continue;
-        var text = (el.textContent || '').trim();
+        // Icon-only buttons (no visible text, e.g. an <img> print icon)
+        // only expose the label via alt/title, so check those too.
+        var text = (el.textContent || el.getAttribute('alt') || el.getAttribute('title') || '').trim();
         if (!text || text.length > 60) continue;
         for (var k = 0; k < keywords.length; k++) {
           if (text.indexOf(keywords[k]) === -1) continue;
@@ -649,14 +661,25 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   /// "طباعة" button already on the current page (same robust find-and-click
   /// used for the shortcut chips) — that way the platform's own print
   /// logic runs first (it may apply print-specific styling, hide the
-  /// sidebar, etc. before calling window.print()), which we've hooked (see
-  /// _overridePageOwnPrintButton) to land in _doPrintCapture below. If the
-  /// current page has no such button (e.g. تقدير المقررات), falls back to
-  /// capturing the page directly ourselves.
+  /// sidebar, navigate to a separate print-ready report page, etc. before
+  /// calling window.print()), which we've hooked (see
+  /// _overridePageOwnPrintButton) to land in _doPrintCapture below.
+  ///
+  /// If the current page has no such button at all (e.g. تقدير المقررات),
+  /// falls back to capturing the page directly ourselves immediately. If a
+  /// button WAS found and clicked but the page never actually signals back
+  /// (its own print logic doesn't call window.print(), or calls it before
+  /// our hook re-attaches after a navigation), a short safety-net timer
+  /// captures whatever is on screen anyway so the student always gets
+  /// something instead of a silently-dead button.
   Future<void> _printCurrentPage() async {
     final clickedRealButton = await _clickByKeywords(_printButtonKeywords);
-    if (clickedRealButton) return; // _doPrintCapture runs via the print_request channel message.
-    await _doPrintCapture();
+    if (!clickedRealButton) {
+      await _doPrintCapture();
+      return;
+    }
+    _printFallbackTimer?.cancel();
+    _printFallbackTimer = Timer(const Duration(milliseconds: 2500), _doPrintCapture);
   }
 
   /// Captures what's on screen and hands it to the OS print dialog
@@ -688,17 +711,32 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     }
   }
 
-  /// Hooks window.print() on the platform's own page so its existing
-  /// "طباعة" buttons — whether tapped directly by the student or triggered
-  /// by _printCurrentPage above — land in _doPrintCapture instead of doing
-  /// nothing (a plain WebView has no built-in print handling). Re-applied
-  /// on every page load since each navigation gets a fresh JS context.
+  /// Hooks window.print() AND window.open() on the platform's own page so
+  /// its existing "طباعة" buttons actually produce something, whether
+  /// tapped directly by the student or triggered by _printCurrentPage
+  /// above:
+  /// - window.print() does nothing inside a plain WebView (no built-in
+  ///   print handling) — hooked to land in _doPrintCapture instead.
+  /// - Many of these older ASP-style "طباعة" buttons instead call
+  ///   window.open(reportUrl) to show a separate print-ready report page.
+  ///   webview_flutter has no popup-window support, so that call would
+  ///   otherwise silently do nothing (the real printable report never
+  ///   appears) — hooked to navigate the SAME WebView to that report URL
+  ///   instead, so the actual document loads and becomes capturable.
+  /// Re-applied on every page load since each navigation gets a fresh JS
+  /// context.
   Future<void> _overridePageOwnPrintButton() async {
     const js = r'''
     (function() {
       try {
         window.print = function() {
           if (window.IbnHaytham) window.IbnHaytham.postMessage('print_request');
+        };
+        window.open = function(url) {
+          if (url) {
+            setTimeout(function() { window.location.href = url; }, 0);
+          }
+          return null;
         };
       } catch (e) {}
     })();
