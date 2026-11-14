@@ -323,10 +323,18 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   /// credit-hours summary line from the "تقدير المقررات" results page and
   /// feeds them straight into the GPA calculator's "previous" totals, so
   /// the student doesn't have to copy numbers by hand.
+  ///
+  /// The results page repeats this summary row ONCE PER TERM (الأول،
+  /// الثاني، ...), each with its own "المعدل التراكمي" that is already
+  /// cumulative up to that term. So we take the LAST one on the page (the
+  /// most recent term) as the true overall GPA, and SUM every term's own
+  /// earned-hours line to get the real total — otherwise only the first
+  /// term's numbers were being used.
   Future<void> _syncGpaToCalculator() async {
     const js = r'''
     (function() {
-      function findValueAfterLabel(labels) {
+      function findAllValuesAfterLabel(labels) {
+        var results = [];
         var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
         var node;
         while ((node = walker.nextNode())) {
@@ -337,7 +345,7 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
             if (idx === -1) continue;
             var rest = t.slice(idx + labels[i].length);
             var m = rest.match(/[0-9]+(?:\.[0-9]+)?/);
-            if (m) return m[0];
+            if (m) { results.push(m[0]); continue; }
             var row = node.parentElement ? node.parentElement.closest('tr,div,li,td') || node.parentElement : null;
             if (row) {
               var full = row.textContent || '';
@@ -345,15 +353,28 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
               if (idx2 !== -1) {
                 var rest2 = full.slice(idx2 + labels[i].length);
                 var m2 = rest2.match(/[0-9]+(?:\.[0-9]+)?/);
-                if (m2) return m2[0];
+                if (m2) results.push(m2[0]);
               }
             }
           }
         }
-        return null;
+        return results;
       }
-      var gpa = findValueAfterLabel(['المعدل التراكمي']);
-      var credits = findValueAfterLabel(['الساعات الحاصل عليها', 'الساعات المسجله', 'الساعات المسجلة']);
+
+      var gpaVals = findAllValuesAfterLabel(['المعدل التراكمي']);
+      var gpa = gpaVals.length ? gpaVals[gpaVals.length - 1] : null;
+
+      var creditVals = findAllValuesAfterLabel(['الساعات الحاصل عليها']);
+      if (!creditVals.length) {
+        creditVals = findAllValuesAfterLabel(['الساعات المسجله', 'الساعات المسجلة']);
+      }
+      var credits = null;
+      if (creditVals.length) {
+        var sum = 0;
+        for (var c = 0; c < creditVals.length; c++) { sum += parseFloat(creditVals[c]) || 0; }
+        credits = String(sum);
+      }
+
       if (gpa || credits) {
         if (window.IbnHaytham) {
           window.IbnHaytham.postMessage('gpa_sync:' + JSON.stringify({ gpa: gpa, credits: credits }));
