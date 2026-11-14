@@ -300,6 +300,20 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
       // arrived (avoids printing twice).
       _printFallbackTimer?.cancel();
       _doPrintCapture();
+    } else if (data.startsWith('print_html:')) {
+      // The real mechanism, found from the platform's own saved page
+      // source: its "طباعة" buttons call a shared ClickHereToPrint(divId)
+      // helper, which does window.open('', ...), writes the printable
+      // div's HTML into THAT popup window, then calls .print() on the
+      // popup — never on the main page's window.print(). A plain WebView
+      // can't open real popups, so window.open is hooked (see
+      // _overridePageOwnPrintButton) to return a fake window object that
+      // captures what gets written to it and posts it here once .print()
+      // is called on it — giving us the exact printable content the site
+      // itself prepared, not just a screenshot of whatever is on screen.
+      _printFallbackTimer?.cancel();
+      final html = Uri.decodeComponent(data.substring('print_html:'.length));
+      _printHtmlContent(html);
     }
   }
 
@@ -712,19 +726,25 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   }
 
   /// Hooks window.print() AND window.open() on the platform's own page so
-  /// its existing "طباعة" buttons actually produce something, whether
-  /// tapped directly by the student or triggered by _printCurrentPage
-  /// above:
-  /// - window.print() does nothing inside a plain WebView (no built-in
-  ///   print handling) — hooked to land in _doPrintCapture instead.
-  /// - Many of these older ASP-style "طباعة" buttons instead call
-  ///   window.open(reportUrl) to show a separate print-ready report page.
-  ///   webview_flutter has no popup-window support, so that call would
-  ///   otherwise silently do nothing (the real printable report never
-  ///   appears) — hooked to navigate the SAME WebView to that report URL
-  ///   instead, so the actual document loads and becomes capturable.
-  /// Re-applied on every page load since each navigation gets a fresh JS
-  /// context.
+  /// its existing "طباعة" buttons actually produce something.
+  ///
+  /// Found from the platform's own saved page source: every "طباعة" button
+  /// is wired to a shared `ClickHereToPrint(divId)` helper — the classic
+  /// pattern of `window.open('', ...)` to get a blank popup window, then
+  /// `popup.document.write(printDiv.innerHTML)` and `popup.print()`. The
+  /// print() call happens on the POPUP window, never on the main page's
+  /// own `window.print()` — and a plain WebView can't open real popups, so
+  /// that call was silently going nowhere.
+  ///
+  /// window.open is hooked to return a fake window-like object instead of
+  /// null: its fake `document.write`/`writeln` just accumulate the HTML
+  /// the page writes into it, and when the page calls `.print()` on that
+  /// fake object, we post the accumulated HTML back to Flutter — handing
+  /// us the EXACT printable content the site prepared (clean, no
+  /// sidebar/menu clutter), not just a screenshot of the screen. The
+  /// direct `window.print()` hook is kept too, in case any page calls it
+  /// without the popup indirection. Re-applied on every page load since
+  /// each navigation gets a fresh JS context.
   Future<void> _overridePageOwnPrintButton() async {
     const js = r'''
     (function() {
@@ -732,11 +752,33 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
         window.print = function() {
           if (window.IbnHaytham) window.IbnHaytham.postMessage('print_request');
         };
-        window.open = function(url) {
+        window.open = function(url, name, specs) {
+          // A real print report URL (not the blank '' used by
+          // ClickHereToPrint-style helpers) is still worth navigating to
+          // directly, since there's nothing to "write into" otherwise.
           if (url) {
             setTimeout(function() { window.location.href = url; }, 0);
+            return null;
           }
-          return null;
+          var chunks = [];
+          var fakeDoc = {
+            write: function (s) { chunks.push(s); },
+            writeln: function (s) { chunks.push(s + '\n'); },
+            open: function () { chunks = []; },
+            close: function () {},
+            title: ''
+          };
+          return {
+            document: fakeDoc,
+            print: function () {
+              if (window.IbnHaytham) {
+                window.IbnHaytham.postMessage('print_html:' + encodeURIComponent(chunks.join('')));
+              }
+            },
+            close: function () {},
+            focus: function () {},
+            blur: function () {}
+          };
         };
       } catch (e) {}
     })();
@@ -744,6 +786,31 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     try {
       await _controller!.runJavaScript(js);
     } catch (_) {}
+  }
+
+  /// Renders the exact printable HTML the site itself wrote into its
+  /// (fake) popup window as a real PDF — via package:printing's built-in
+  /// HTML-to-PDF conversion, giving actual selectable text/tables instead
+  /// of a screenshot. Falls back to the screenshot capture if conversion
+  /// fails for any reason (e.g. the written HTML was empty/malformed).
+  Future<void> _printHtmlContent(String html) async {
+    if (html.trim().isEmpty) {
+      await _doPrintCapture();
+      return;
+    }
+    try {
+      // ignore: deprecated_member_use — convertHtml is flagged deprecated
+      // by the package with no built-in replacement; it still works and
+      // is the simplest way to turn the site's own printable HTML into a
+      // real (selectable-text) PDF. Falls back to the screenshot capture
+      // above if it's unsupported on this platform or the HTML is odd.
+      await Printing.layoutPdf(
+        onLayout: (format) => Printing.convertHtml(format: format, html: html),
+        name: 'ibn_haytham.pdf',
+      );
+    } catch (_) {
+      await _doPrintCapture();
+    }
   }
 
   Future<Uint8List?> _captureScreenshotBytes() async {
