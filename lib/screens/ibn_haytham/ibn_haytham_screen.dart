@@ -3,11 +3,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -188,19 +188,18 @@ class _Shortcut {
   final String label;
   final IconData icon;
   final List<String> matchKeywords;
-  final bool hasPrintOnPlatform;
   final bool seasonalOnly;
-  const _Shortcut(this.label, this.icon, this.matchKeywords, {this.hasPrintOnPlatform = false, this.seasonalOnly = false});
+  const _Shortcut(this.label, this.icon, this.matchKeywords, {this.seasonalOnly = false});
 }
 
 const _shortcuts = <_Shortcut>[
-  _Shortcut('استمارة التسجيل', Icons.assignment_rounded, ['استمارة التسجيل', 'استمارة تسجيل'], hasPrintOnPlatform: true),
+  _Shortcut('استمارة التسجيل', Icons.assignment_rounded, ['استمارة التسجيل', 'استمارة تسجيل']),
   _Shortcut('تقدير المقررات', Icons.grade_rounded, ['تقديرات المقررات', 'تقدير المقررات', 'تقدير مقررات']),
-  _Shortcut('الجدول الدراسي', Icons.calendar_view_week_rounded, ['الجدول الدراسي', 'الجدول الدراسى'], hasPrintOnPlatform: true),
+  _Shortcut('الجدول الدراسي', Icons.calendar_view_week_rounded, ['الجدول الدراسي', 'الجدول الدراسى']),
   _Shortcut('التسجيل الأكاديمي', Icons.how_to_reg_rounded,
       ['التسجيل الأكاديمي', 'التسجيل الأكاديمى', 'التسجيل الاكاديمي', 'التسجيل الاكاديمى'],
       seasonalOnly: true),
-  _Shortcut('جدول الامتحانات', Icons.event_note_rounded, ['جدول الامتحانات'], hasPrintOnPlatform: true),
+  _Shortcut('جدول الامتحانات', Icons.event_note_rounded, ['جدول الامتحانات']),
 ];
 
 const _platformUrl = 'https://stdch.menofia.education/static/index.html';
@@ -226,18 +225,12 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   bool _autoFillTried = false;
   String? _studentName;
   String? _studentDept;
-  Timer? _printFallbackTimer;
+  int _activeDownloads = 0;
 
   @override
   void initState() {
     super.initState();
     _initController();
-  }
-
-  @override
-  void dispose() {
-    _printFallbackTimer?.cancel();
-    super.dispose();
   }
 
   Future<void> _initController() async {
@@ -265,7 +258,14 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
               await _tryAutoLogin();
             }
             await _tryExtractProfile();
-            await _overridePageOwnPrintButton();
+            await _enableNormalBrowserBehaviour();
+          },
+          onNavigationRequest: (request) {
+            if (_looksLikeDownload(request.url)) {
+              _downloadFile(request.url);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
           },
         ),
       )
@@ -291,29 +291,12 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
           ),
         ),
       );
-    } else if (data == 'print_request') {
-      // The platform's own "طباعة" button calls window.print(), which does
-      // nothing inside a plain WebView (no popup/print support) — we hook
-      // it to trigger our own capture flow instead, so the button the
-      // student already sees on the real page just works. Cancel the
-      // safety-net timer from _printCurrentPage since the real signal
-      // arrived (avoids printing twice).
-      _printFallbackTimer?.cancel();
-      _doPrintCapture();
-    } else if (data.startsWith('print_html:')) {
-      // The real mechanism, found from the platform's own saved page
-      // source: its "طباعة" buttons call a shared ClickHereToPrint(divId)
-      // helper, which does window.open('', ...), writes the printable
-      // div's HTML into THAT popup window, then calls .print() on the
-      // popup — never on the main page's window.print(). A plain WebView
-      // can't open real popups, so window.open is hooked (see
-      // _overridePageOwnPrintButton) to return a fake window object that
-      // captures what gets written to it and posts it here once .print()
-      // is called on it — giving us the exact printable content the site
-      // itself prepared, not just a screenshot of whatever is on screen.
-      _printFallbackTimer?.cancel();
-      final html = Uri.decodeComponent(data.substring('print_html:'.length));
-      _printHtmlContent(html);
+    } else if (data.startsWith('open_url:')) {
+      // A window.open() call with a real (non-blank) target URL — the
+      // closest a plain WebView can get to "open a new tab" is to just
+      // navigate there, matching normal browser behaviour.
+      final url = Uri.decodeComponent(data.substring('open_url:'.length));
+      _controller?.loadRequest(Uri.parse(url));
     }
   }
 
@@ -651,134 +634,24 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
         ),
       );
     }
-
-    if (!s.hasPrintOnPlatform && mounted) {
-      // No confirmed print button on the platform for this page — our own
-      // "طباعة" button (AppBar) still works everywhere via a screenshot, so
-      // point the student at it instead of a raw platform error.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('الصفحة دي مفيهاش زر طباعة أكيد على المنصة — استخدم زر الطباعة فوق، بيشتغل من التطبيق على أي صفحة.'),
-          action: SnackBarAction(label: 'اطبع دلوقتي', onPressed: _printCurrentPage),
-        ),
-      );
-    }
   }
 
-  /// Keywords matching the platform's own "طباعة" print buttons (seen on
-  /// استمارة التسجيل، الجدول الدراسي، جدول الامتحانات). Both spellings are
-  /// included since the platform's own screenshots show "طباعه" (no taa
-  /// marbuta) in some places.
-  static const _printButtonKeywords = ['طباعة', 'طباعه', 'Print'];
-
-  /// The AppBar print button: first tries to actually press the real
-  /// "طباعة" button already on the current page (same robust find-and-click
-  /// used for the shortcut chips) — that way the platform's own print
-  /// logic runs first (it may apply print-specific styling, hide the
-  /// sidebar, navigate to a separate print-ready report page, etc. before
-  /// calling window.print()), which we've hooked (see
-  /// _overridePageOwnPrintButton) to land in _doPrintCapture below.
-  ///
-  /// If the current page has no such button at all (e.g. تقدير المقررات),
-  /// falls back to capturing the page directly ourselves immediately. If a
-  /// button WAS found and clicked but the page never actually signals back
-  /// (its own print logic doesn't call window.print(), or calls it before
-  /// our hook re-attaches after a navigation), a short safety-net timer
-  /// captures whatever is on screen anyway so the student always gets
-  /// something instead of a silently-dead button.
-  Future<void> _printCurrentPage() async {
-    final clickedRealButton = await _clickByKeywords(_printButtonKeywords);
-    if (!clickedRealButton) {
-      await _doPrintCapture();
-      return;
-    }
-    _printFallbackTimer?.cancel();
-    _printFallbackTimer = Timer(const Duration(milliseconds: 2500), _doPrintCapture);
-  }
-
-  /// Captures what's on screen and hands it to the OS print dialog
-  /// (package:printing), which lets the student print to a real printer OR
-  /// choose "Save as PDF" — covering both printing and downloading.
-  Future<void> _doPrintCapture() async {
-    final bytes = await _captureScreenshotBytes();
-    if (bytes == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذّرت قراءة الصفحة للطباعة، جرّب تاني بعد ما الصفحة تخلص تحميل.')),
-      );
-      return;
-    }
-    try {
-      final image = pw.MemoryImage(bytes);
-      final doc = pw.Document();
-      doc.addPage(
-        pw.Page(
-          build: (ctx) => pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),
-        ),
-      );
-      await Printing.layoutPdf(onLayout: (_) => doc.save(), name: 'ibn_haytham.pdf');
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذّرت الطباعة — جرّب زر المشاركة بدل منها.')),
-      );
-    }
-  }
-
-  /// Hooks window.print() AND window.open() on the platform's own page so
-  /// its existing "طباعة" buttons actually produce something.
-  ///
-  /// Found from the platform's own saved page source: every "طباعة" button
-  /// is wired to a shared `ClickHereToPrint(divId)` helper — the classic
-  /// pattern of `window.open('', ...)` to get a blank popup window, then
-  /// `popup.document.write(printDiv.innerHTML)` and `popup.print()`. The
-  /// print() call happens on the POPUP window, never on the main page's
-  /// own `window.print()` — and a plain WebView can't open real popups, so
-  /// that call was silently going nowhere.
-  ///
-  /// window.open is hooked to return a fake window-like object instead of
-  /// null: its fake `document.write`/`writeln` just accumulate the HTML
-  /// the page writes into it, and when the page calls `.print()` on that
-  /// fake object, we post the accumulated HTML back to Flutter — handing
-  /// us the EXACT printable content the site prepared (clean, no
-  /// sidebar/menu clutter), not just a screenshot of the screen. The
-  /// direct `window.print()` hook is kept too, in case any page calls it
-  /// without the popup indirection. Re-applied on every page load since
-  /// each navigation gets a fresh JS context.
-  Future<void> _overridePageOwnPrintButton() async {
+  /// Lets window.open() keep working like a normal browser instead of
+  /// doing nothing: since a plain WebView can't open real popup windows,
+  /// a call with a real target URL just navigates the same WebView there
+  /// (the closest in-app equivalent to opening a new tab). Re-applied on
+  /// every page load since each navigation gets a fresh JS context.
+  Future<void> _enableNormalBrowserBehaviour() async {
     const js = r'''
     (function() {
       try {
-        window.print = function() {
-          if (window.IbnHaytham) window.IbnHaytham.postMessage('print_request');
-        };
-        window.open = function(url, name, specs) {
-          // A real print report URL (not the blank '' used by
-          // ClickHereToPrint-style helpers) is still worth navigating to
-          // directly, since there's nothing to "write into" otherwise.
+        window.open = function(url) {
           if (url) {
-            setTimeout(function() { window.location.href = url; }, 0);
-            return null;
+            if (window.IbnHaytham) {
+              window.IbnHaytham.postMessage('open_url:' + encodeURIComponent(url));
+            }
           }
-          var chunks = [];
-          var fakeDoc = {
-            write: function (s) { chunks.push(s); },
-            writeln: function (s) { chunks.push(s + '\n'); },
-            open: function () { chunks = []; },
-            close: function () {},
-            title: ''
-          };
-          return {
-            document: fakeDoc,
-            print: function () {
-              if (window.IbnHaytham) {
-                window.IbnHaytham.postMessage('print_html:' + encodeURIComponent(chunks.join('')));
-              }
-            },
-            close: function () {},
-            focus: function () {},
-            blur: function () {}
-          };
+          return null;
         };
       } catch (e) {}
     })();
@@ -788,28 +661,72 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
     } catch (_) {}
   }
 
-  /// Renders the exact printable HTML the site itself wrote into its
-  /// (fake) popup window as a real PDF — via package:printing's built-in
-  /// HTML-to-PDF conversion, giving actual selectable text/tables instead
-  /// of a screenshot. Falls back to the screenshot capture if conversion
-  /// fails for any reason (e.g. the written HTML was empty/malformed).
-  Future<void> _printHtmlContent(String html) async {
-    if (html.trim().isEmpty) {
-      await _doPrintCapture();
-      return;
-    }
+  /// File extensions the platform serves as direct downloads (exam
+  /// schedules, forms, reports, …) rather than pages to browse — tapping
+  /// a link to one of these should download the file instead of trying
+  /// (and failing) to render it inside the WebView, exactly like a normal
+  /// mobile browser would.
+  static const _downloadExtensions = [
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.rar', '.csv',
+  ];
+
+  bool _looksLikeDownload(String url) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return _downloadExtensions.any((ext) => path.endsWith(ext));
+  }
+
+  /// Downloads a file the student tapped on the platform (e.g. a form or
+  /// exam schedule) into the app's documents folder, then offers to open
+  /// it right away — the in-app equivalent of a normal browser's download
+  /// manager.
+  Future<void> _downloadFile(String url) async {
+    if (!mounted) return;
+    final uri = Uri.tryParse(url);
+    final rawName = (uri?.pathSegments.isNotEmpty ?? false) ? uri!.pathSegments.last : '';
+    final ext = rawName.contains('.') ? rawName.split('.').last : 'pdf';
+    final fileName = 'ibn_haytham_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    setState(() => _activeDownloads++);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('جاري تحميل الملف...'), duration: Duration(seconds: 2)),
+    );
+
     try {
-      // ignore: deprecated_member_use — convertHtml is flagged deprecated
-      // by the package with no built-in replacement; it still works and
-      // is the simplest way to turn the site's own printable HTML into a
-      // real (selectable-text) PDF. Falls back to the screenshot capture
-      // above if it's unsupported on this platform or the HTML is odd.
-      await Printing.layoutPdf(
-        onLayout: (format) => Printing.convertHtml(format: format, html: html),
-        name: 'ibn_haytham.pdf',
+      final dir = await getApplicationDocumentsDirectory();
+      final subDir = Directory('${dir.path}/ibn_haytham');
+      if (!await subDir.exists()) await subDir.create(recursive: true);
+
+      final task = DownloadTask(
+        url: url,
+        filename: fileName,
+        baseDirectory: BaseDirectory.applicationDocuments,
+        directory: 'ibn_haytham',
       );
+      final result = await FileDownloader().download(task);
+      if (!mounted) return;
+      setState(() => _activeDownloads--);
+
+      if (result.status == TaskStatus.complete) {
+        final filePath = '${subDir.path}/$fileName';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم تحميل الملف بنجاح.'),
+            action: SnackBarAction(label: 'فتح', onPressed: () => OpenFilex.open(filePath)),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذّر تحميل الملف، جرّب تاني.')),
+        );
+      }
     } catch (_) {
-      await _doPrintCapture();
+      if (!mounted) return;
+      setState(() => _activeDownloads--);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر تحميل الملف، جرّب تاني.')),
+      );
     }
   }
 
@@ -826,8 +743,7 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
   }
 
   /// Lets the student share/save the current page as an image (e.g. to send
-  /// over WhatsApp) — separate from _printCurrentPage, which produces a
-  /// proper printable/savable PDF via the OS print dialog.
+  /// over WhatsApp).
   Future<void> _shareScreenshot() async {
     final bytes = await _captureScreenshotBytes();
     if (bytes == null) {
@@ -864,11 +780,15 @@ class _IbnHaythamPortalState extends State<_IbnHaythamPortal> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.print_rounded),
-            tooltip: 'طباعة / تحميل كـ PDF',
-            onPressed: _printCurrentPage,
-          ),
+          if (_activeDownloads > 0)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.calculate_rounded),
             tooltip: 'اربط معدلك بحاسبة الـGPA',
