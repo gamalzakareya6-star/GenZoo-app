@@ -3,7 +3,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -53,19 +52,6 @@ Future<void> main() async {
   } catch (e, stackTrace) {
     debugPrint('GenZoo: Firebase initialization failed: $e');
     debugPrintStack(stackTrace: stackTrace);
-  }
-
-  // Lets the Quran player show a music-style notification with
-  // play/pause/next/previous controls and keep playing in the background.
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.gamal.genzoo.channel.audio',
-      androidNotificationChannelName: 'تشغيل القرآن الكريم',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-    );
-  } catch (e) {
-    debugPrint('GenZoo: JustAudioBackground init failed: $e');
   }
 
   // Start the application without waiting for notification
