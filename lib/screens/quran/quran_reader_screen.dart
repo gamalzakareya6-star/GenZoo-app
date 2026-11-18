@@ -14,10 +14,10 @@ const String _basmala = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱ
 // Remove it from the *display only* and only when all four words match;
 // the QuranService cache always retains the untouched API text.
 String _displayAyahText(String text) {
-  final words = text.trimLeft().split(RegExp(r'\\s+'));
+  final words = text.trimLeft().split(RegExp(r'\s+'));
   if (words.length < 4) return text;
   String normalize(String value) => value
-      .replaceAll(RegExp(r'[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]'), '')
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED]'), '')
       .replaceAll('ٱ', 'ا')
       .replaceAll('أ', 'ا')
       .replaceAll('إ', 'ا')
