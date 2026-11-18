@@ -34,7 +34,6 @@ dependencies:
 
   # Quran audio, Qibla and in-app updates
   just_audio: ^0.9.40
-  just_audio_background: ^0.0.1-beta.17
   geolocator: ^12.0.0
   flutter_compass: ^0.8.1
   package_info_plus: ^8.0.2

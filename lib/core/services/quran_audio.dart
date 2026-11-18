@@ -4,10 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'quran_service.dart';
 
 /// A reciter available from the free Islamic Network audio CDN
 /// (https://alquran.cloud/cdn). Files are one mp3 per ayah.
@@ -42,8 +39,7 @@ const List<int> _ayahCounts = [
 /// Plays a surah ayah by ayah, starts from any ayah the user taps, and —
 /// once a surah finishes — automatically continues into the next one, like
 /// a normal music player playing through an album. Kept as a single
-/// app-wide instance (not tied to any one screen) so playback and the
-/// music-style notification controls (via just_audio_background) survive
+/// app-wide instance (not tied to any one screen) so playback survives
 /// navigating away from the Quran reader screen.
 class QuranAudioController extends ChangeNotifier {
   static const String _kReciter = 'quran_reciter_index';
@@ -51,7 +47,6 @@ class QuranAudioController extends ChangeNotifier {
   static final QuranAudioController instance = QuranAudioController._();
 
   final AudioPlayer _player = AudioPlayer();
-  final QuranService _service = QuranService();
   int _reciterIndex = 0;
   int? _surah;
   int _firstAyah = 1; // ayah number of playlist item 0
@@ -61,7 +56,6 @@ class QuranAudioController extends ChangeNotifier {
   String? _error;
 
   static Map<String, String>? _resolvedEditions;
-  static Map<int, String>? _surahNames;
   late final StreamSubscription<int?> _indexSubscription;
   late final StreamSubscription<PlayerState> _stateSubscription;
   int _requestId = 0;
@@ -116,17 +110,6 @@ class QuranAudioController extends ChangeNotifier {
     } finally {
       _advancing = false;
     }
-  }
-
-  Future<String> _surahName(int surah) async {
-    try {
-      _surahNames ??= {
-        for (final s in await _service.getSurahs()) s.number: s.name,
-      };
-    } catch (_) {
-      _surahNames ??= {};
-    }
-    return _surahNames![surah] ?? 'سورة $surah';
   }
 
   Future<void> _loadReciter() async {
@@ -218,19 +201,11 @@ class QuranAudioController extends ChangeNotifier {
       final r = reciter;
       final edition = await _editionFor(r);
       if (requestId != _requestId) return;
-      final name = await _surahName(surah);
-      if (requestId != _requestId) return;
       final sources = <AudioSource>[
         for (var a = start; a <= total; a++)
           AudioSource.uri(
             Uri.parse(
                 'https://cdn.islamic.network/quran/audio/${r.bitrate}/$edition/${_globalAyah(surah, a)}.mp3'),
-            tag: MediaItem(
-              id: '$surah-$a',
-              album: 'القرآن الكريم',
-              title: name,
-              artist: r.name,
-            ),
           ),
       ];
       if (requestId != _requestId) return;
@@ -239,9 +214,13 @@ class QuranAudioController extends ChangeNotifier {
       _currentAyah = start;
       _loading = true;
       notifyListeners();
-      await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
+      // A hard timeout here means a stuck network/player call always shows
+      // the student an error instead of spinning forever with no way out.
+      await _player
+          .setAudioSource(ConcatenatingAudioSource(children: sources))
+          .timeout(const Duration(seconds: 25));
       if (requestId != _requestId) return;
-      await _player.play();
+      await _player.play().timeout(const Duration(seconds: 10));
     } catch (e) {
       if (requestId != _requestId) return;
       debugPrint('Quran audio error: $e');
