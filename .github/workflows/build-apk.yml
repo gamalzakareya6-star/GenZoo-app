@@ -80,7 +80,7 @@ jobs:
         if: needs.decide.outputs.shorebird != 'true'
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.47.9'
           channel: stable
 
       - name: Install Dependencies
@@ -127,7 +127,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! flutter build apk --release --build-number=${{ github.run_number }} --android-skip-build-dependency-validation > build_out.txt 2>&1; then
+          if ! flutter build apk --release --build-number=${{ github.run_number }} > build_out.txt 2>&1; then
             tail -n 60 build_out.txt
             ERRS=$(grep -E "Error:|error:|^e: |What went wrong|Could not|FAILURE|Execution failed|not found|isn't defined|doesn't" -A14 build_out.txt | head -c 3500 | sed ':a;N;$!ba;s/\n/%0A/g')
             echo "::error title=Build failed::$ERRS"
