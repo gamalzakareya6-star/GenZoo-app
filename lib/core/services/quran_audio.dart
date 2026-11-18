@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,7 +57,6 @@ class QuranAudioController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
 
-  static Map<String, String>? _resolvedEditions;
   static Map<int, String>? _surahNames;
   late final StreamSubscription<int?> _indexSubscription;
   late final StreamSubscription<PlayerState> _stateSubscription;
@@ -119,14 +115,9 @@ class QuranAudioController extends ChangeNotifier {
   }
 
   Future<String> _surahName(int surah) async {
-    try {
-      _surahNames ??= {
-        for (final s in await _service.getSurahs()) s.number: s.name,
-      };
-    } catch (_) {
-      _surahNames ??= {};
-    }
-    return _surahNames![surah] ?? 'سورة $surah';
+    // Audio playback must not wait for the Quran text API just to obtain
+    // notification metadata. The player can use a local fallback title.
+    return _surahNames?[surah] ?? 'سورة $surah';
   }
 
   Future<void> _loadReciter() async {
@@ -156,36 +147,6 @@ class QuranAudioController extends ChangeNotifier {
     }
   }
 
-  /// The CDN edition ids are checked against the live list once, so a wrong
-  /// id above never breaks playback.
-  Future<String> _editionFor(Reciter r) async {
-    try {
-      _resolvedEditions ??= await _fetchEditions();
-    } catch (_) {
-      _resolvedEditions = <String, String>{};
-    }
-    final map = _resolvedEditions!;
-    if (map.isEmpty || map.containsKey(r.edition)) return r.edition;
-    for (final e in map.entries) {
-      if (e.value.toLowerCase().contains(r.keyword)) return e.key;
-    }
-    return r.edition;
-  }
-
-  Future<Map<String, String>> _fetchEditions() async {
-    final res = await http
-        .get(Uri.parse(
-            'https://api.alquran.cloud/v1/edition?format=audio&language=ar&type=versebyverse'))
-        .timeout(const Duration(seconds: 10));
-    if (res.statusCode != 200) throw Exception('Edition API HTTP ${res.statusCode}');
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    final data = decoded['data'] as List<dynamic>;
-    final out = <String, String>{};
-    for (final e in data) {
-      out[e['identifier'] as String] = '${e['englishName']}';
-    }
-    return out;
-  }
 
   int _globalAyah(int surah, int ayah) {
     var n = 0;
@@ -216,8 +177,9 @@ class QuranAudioController extends ChangeNotifier {
     final start = ayah;
     try {
       final r = reciter;
-      final edition = await _editionFor(r);
-      if (requestId != _requestId) return;
+      // Edition identifiers are stable CDN identifiers. Avoid a live API
+      // lookup here so playback starts with one network dependency only.
+      final edition = r.edition;
       final name = await _surahName(surah);
       if (requestId != _requestId) return;
       final sources = <AudioSource>[
@@ -239,13 +201,22 @@ class QuranAudioController extends ChangeNotifier {
       _currentAyah = start;
       _loading = true;
       notifyListeners();
-      await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
+      // A stalled CDN request must never leave the UI in an endless spinner.
+      await _player
+          .setAudioSource(ConcatenatingAudioSource(children: sources))
+          .timeout(const Duration(seconds: 30));
       if (requestId != _requestId) return;
       await _player.play();
     } catch (e) {
       if (requestId != _requestId) return;
       debugPrint('Quran audio error: $e');
-      _error = 'تعذّر تشغيل الصوت. تأكد من الاتصال بالإنترنت وحاول مرة أخرى.';
+      try {
+        await _player.stop();
+      } catch (_) {}
+      _currentAyah = null;
+      _error = e is TimeoutException
+          ? 'تأخر تحميل التلاوة من الخادم. تحقق من الإنترنت وحاول مرة أخرى.'
+          : 'تعذّر تشغيل الصوت. تحقق من الاتصال بالإنترنت وحاول مرة أخرى.';
       _loading = false;
       _playing = false;
       notifyListeners();
