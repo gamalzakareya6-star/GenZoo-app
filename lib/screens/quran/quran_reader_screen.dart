@@ -34,6 +34,12 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   final Map<int, TapGestureRecognizer> _tapRecognizers = {};
   late SurahInfo _displayedSurahInfo;
   bool _followingAudio = false;
+  // The surah the audio controller was playing the last time it matched
+  // what's displayed here. Used so this screen only follows the
+  // controller when IT auto-advanced past the surah being shown — never
+  // just because some other surah happens to be playing in the
+  // background while the student opened a different one to read.
+  int? _lastSyncedAudioSurah;
 
   TapGestureRecognizer _recognizerFor(int ayah) {
     return _tapRecognizers.putIfAbsent(
@@ -95,11 +101,25 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   /// QuranAudioController._onSurahCompleted), this brings the text view
   /// along with it — just like a music player showing the next track's
   /// info once it starts playing.
+  ///
+  /// Crucially, this only kicks in when THIS screen's displayed surah was
+  /// the one actually being played (i.e. it matched the controller the
+  /// last time we checked) — never just because a different surah is
+  /// already playing in the background while the student opened this one
+  /// to read. Without that check, opening any surah while another one is
+  /// playing would instantly snap the screen back to the playing surah
+  /// instead of showing the one just tapped.
   void _followAudioAdvance() {
     final target = _audio.currentSurah;
-    if (target == null ||
-        target == _displayedSurahInfo.number ||
-        _followingAudio) {
+    if (target == null) {
+      _lastSyncedAudioSurah = null;
+      return;
+    }
+    if (target == _displayedSurahInfo.number) {
+      _lastSyncedAudioSurah = target;
+      return;
+    }
+    if (_lastSyncedAudioSurah != _displayedSurahInfo.number || _followingAudio) {
       return;
     }
     _followingAudio = true;
