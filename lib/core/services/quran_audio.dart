@@ -71,6 +71,11 @@ class QuranAudioController extends ChangeNotifier {
     _indexSubscription = _player.currentIndexStream.listen((i) {
       if (i == null || _surah == null) return;
       _currentAyah = _firstAyah + i;
+      final surah = _surah;
+      if (surah != null) {
+        SharedPreferences.getInstance().then((prefs) =>
+            prefs.setInt('quran_last_ayah_$surah', _currentAyah!));
+      }
       notifyListeners();
     });
     _stateSubscription = _player.playerStateStream.listen((s) {
@@ -250,11 +255,20 @@ class QuranAudioController extends ChangeNotifier {
   Future<void> pause() => _player.pause();
 
   Future<void> resumeOrPlay(int surah) async {
+    if (surah < 1 || surah > _ayahCounts.length) return;
     if (_surah == surah && _currentAyah != null) {
       await _player.play();
-    } else {
-      await playFrom(surah, 1);
+      return;
     }
+    var startAyah = 1;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt('quran_last_ayah_$surah');
+      if (saved != null && saved >= 1 && saved <= _ayahCounts[surah - 1]) {
+        startAyah = saved;
+      }
+    } catch (_) {}
+    await playFrom(surah, startAyah);
   }
 
   Future<void> next() async {
