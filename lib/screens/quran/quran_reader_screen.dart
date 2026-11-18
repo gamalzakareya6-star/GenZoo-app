@@ -30,14 +30,16 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   final QuranService _service = QuranService();
   late Future<List<QuranAyah>> _future;
   double _fontSize = 26;
-  final QuranAudioController _audio = QuranAudioController();
+  final QuranAudioController _audio = QuranAudioController.instance;
   final Map<int, TapGestureRecognizer> _tapRecognizers = {};
+  late SurahInfo _displayedSurahInfo;
+  bool _followingAudio = false;
 
   TapGestureRecognizer _recognizerFor(int ayah) {
     return _tapRecognizers.putIfAbsent(
       ayah,
       () => TapGestureRecognizer()
-        ..onTap = () => _audio.playFrom(widget.surah.number, ayah),
+        ..onTap = () => _audio.playFrom(_displayedSurahInfo.number, ayah),
     );
   }
 
@@ -46,13 +48,17 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     for (final r in _tapRecognizers.values) {
       r.dispose();
     }
-    _audio.dispose();
+    // The audio controller is a single app-wide instance (see
+    // QuranAudioController.instance) so playback and the notification
+    // controls keep going after leaving this screen — it is never
+    // disposed here.
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _displayedSurahInfo = widget.surah;
     _future = _service.getSurah(widget.surah.number);
     _loadPrefs();
   }
@@ -81,26 +87,66 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
 
   void _retry() {
     setState(() {
-      _future = _service.getSurah(widget.surah.number);
+      _future = _service.getSurah(_displayedSurahInfo.number);
+    });
+  }
+
+  /// Once the audio controller auto-advances into the next surah (see
+  /// QuranAudioController._onSurahCompleted), this brings the text view
+  /// along with it — just like a music player showing the next track's
+  /// info once it starts playing.
+  void _followAudioAdvance() {
+    final target = _audio.currentSurah;
+    if (target == null ||
+        target == _displayedSurahInfo.number ||
+        _followingAudio) {
+      return;
+    }
+    _followingAudio = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final surahs = await _service.getSurahs();
+        SurahInfo? info;
+        for (final s in surahs) {
+          if (s.number == target) {
+            info = s;
+            break;
+          }
+        }
+        if (!mounted || info == null) return;
+        setState(() {
+          _displayedSurahInfo = info!;
+          _future = _service.getSurah(target);
+        });
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_kLastSurah, target);
+      } catch (_) {
+        // Audio keeps playing regardless of whether the text view could
+        // follow along — nothing to show the student for this failure.
+      } finally {
+        _followingAudio = false;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final number = widget.surah.number;
 
     return AnimatedBuilder(
       animation: _audio,
-      builder: (context, _) => _buildScaffold(context, theme, number),
+      builder: (context, _) {
+        _followAudioAdvance();
+        return _buildScaffold(context, theme, _displayedSurahInfo.number);
+      },
     );
   }
 
   Widget _buildScaffold(BuildContext context, ThemeData theme, int number) {
     return Scaffold(
-      bottomNavigationBar: _AudioBar(audio: _audio, surah: widget.surah),
+      bottomNavigationBar: _AudioBar(audio: _audio, surah: _displayedSurahInfo),
       appBar: AppBar(
-        title: Text(widget.surah.name),
+        title: Text(_displayedSurahInfo.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.text_decrease_rounded),
@@ -174,7 +220,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                 child: Column(
                   children: [
                     Text(
-                      widget.surah.name,
+                      _displayedSurahInfo.name,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -183,8 +229,8 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${widget.surah.isMeccan ? 'مكية' : 'مدنية'} • '
-                      '${toArabicDigits(widget.surah.ayahCount)} آية',
+                      '${_displayedSurahInfo.isMeccan ? 'مكية' : 'مدنية'} • '
+                      '${toArabicDigits(_displayedSurahInfo.ayahCount)} آية',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.85),
                         fontSize: 12,

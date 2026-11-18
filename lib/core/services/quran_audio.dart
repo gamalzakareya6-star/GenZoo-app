@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'quran_service.dart';
 
 /// A reciter available from the free Islamic Network audio CDN
 /// (https://alquran.cloud/cdn). Files are one mp3 per ayah.
@@ -35,11 +38,19 @@ const List<int> _ayahCounts = [
   5, 6,
 ];
 
-/// Plays a surah ayah by ayah, and starts from any ayah the user taps.
+/// Plays a surah ayah by ayah, starts from any ayah the user taps, and —
+/// once a surah finishes — automatically continues into the next one, like
+/// a normal music player playing through an album. Kept as a single
+/// app-wide instance (not tied to any one screen) so playback and the
+/// music-style notification controls (via just_audio_background) survive
+/// navigating away from the Quran reader screen.
 class QuranAudioController extends ChangeNotifier {
   static const String _kReciter = 'quran_reciter_index';
 
+  static final QuranAudioController instance = QuranAudioController._();
+
   final AudioPlayer _player = AudioPlayer();
+  final QuranService _service = QuranService();
   int _reciterIndex = 0;
   int? _surah;
   int _firstAyah = 1; // ayah number of playlist item 0
@@ -49,8 +60,9 @@ class QuranAudioController extends ChangeNotifier {
   String? _error;
 
   static Map<String, String>? _resolvedEditions;
+  static Map<int, String>? _surahNames;
 
-  QuranAudioController() {
+  QuranAudioController._() {
     _player.currentIndexStream.listen((i) {
       if (i == null || _surah == null) return;
       _currentAyah = _firstAyah + i;
@@ -61,8 +73,7 @@ class QuranAudioController extends ChangeNotifier {
       _loading = s.processingState == ProcessingState.loading ||
           s.processingState == ProcessingState.buffering;
       if (s.processingState == ProcessingState.completed) {
-        _currentAyah = null;
-        _playing = false;
+        _onSurahCompleted();
       }
       notifyListeners();
     });
@@ -71,11 +82,37 @@ class QuranAudioController extends ChangeNotifier {
 
   Reciter get reciter => quranReciters[_reciterIndex];
   int get reciterIndex => _reciterIndex;
+  int? get currentSurah => _surah;
   int? get currentAyah => _currentAyah;
   bool get isPlaying => _playing;
   bool get isLoading => _loading;
   String? get error => _error;
   bool get hasAudio => _surah != null && _currentAyah != null;
+
+  /// Called when the current surah's last ayah finishes playing. Moves on
+  /// to the next surah automatically (112 → الناس), matching how a music
+  /// app flips to the next track at the end of an album. Playback simply
+  /// stops after سورة الناس (114), the last surah.
+  void _onSurahCompleted() {
+    final surah = _surah;
+    _currentAyah = null;
+    _playing = false;
+    if (surah != null && surah < 114) {
+      // Fire-and-forget: playFrom reports its own errors via `_error`.
+      playFrom(surah + 1, 1);
+    }
+  }
+
+  Future<String> _surahName(int surah) async {
+    try {
+      _surahNames ??= {
+        for (final s in await _service.getSurahs()) s.number: s.name,
+      };
+    } catch (_) {
+      _surahNames ??= {};
+    }
+    return _surahNames![surah] ?? 'سورة $surah';
+  }
 
   Future<void> _loadReciter() async {
     try {
@@ -141,7 +178,10 @@ class QuranAudioController extends ChangeNotifier {
     return n + ayah;
   }
 
-  /// Plays [surah] starting at [ayah] and continues to the end of the surah.
+  /// Plays [surah] starting at [ayah] and continues to the end of the
+  /// surah — then automatically into the next one (see
+  /// [_onSurahCompleted]), exactly like flipping to the next track in a
+  /// music player once the current one ends.
   Future<void> playFrom(int surah, int ayah) async {
     _error = null;
     final total = _ayahCounts[surah - 1];
@@ -149,10 +189,19 @@ class QuranAudioController extends ChangeNotifier {
     try {
       final r = reciter;
       final edition = await _editionFor(r);
+      final name = await _surahName(surah);
       final sources = <AudioSource>[
         for (var a = start; a <= total; a++)
-          AudioSource.uri(Uri.parse(
-              'https://cdn.islamic.network/quran/audio/${r.bitrate}/$edition/${_globalAyah(surah, a)}.mp3')),
+          AudioSource.uri(
+            Uri.parse(
+                'https://cdn.islamic.network/quran/audio/${r.bitrate}/$edition/${_globalAyah(surah, a)}.mp3'),
+            tag: MediaItem(
+              id: '$surah-$a',
+              album: 'القرآن الكريم',
+              title: name,
+              artist: r.name,
+            ),
+          ),
       ];
       _surah = surah;
       _firstAyah = start;
