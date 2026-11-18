@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - 'quran-fixes-*'
   workflow_dispatch:
 
 permissions:
@@ -31,8 +32,12 @@ jobs:
         run: |
           SB=false
           if [ "$HAS_SB" = "true" ] && [ -f shorebird.yaml ]; then SB=true; fi
+          # Quran maintenance branches must produce a complete installable APK,
+          # not a Shorebird patch against a possibly unrelated base release.
+          if [[ "$GITHUB_REF_NAME" == quran-fixes-* ]]; then SB=false; fi
           BUILD=true
           FORCE_FULL=false
+          if [[ "$GITHUB_REF_NAME" == quran-fixes-* ]]; then FORCE_FULL=true; fi
           if [ "${{ github.event_name }}" = "push" ]; then
             # A rules-only commit is followed by this workflow adjustment in a
             # separate commit; inspect recent commits so that push still builds
@@ -75,7 +80,7 @@ jobs:
         if: needs.decide.outputs.shorebird != 'true'
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.47.9'
           channel: stable
 
       - name: Install Dependencies
@@ -182,7 +187,7 @@ jobs:
       # Every successful build on main becomes a release "build-<number>".
       # The app checks the latest release and offers to install it.
       - name: Publish release for in-app update
-        if: github.event_name == 'push' || needs.decide.outputs.shorebird == 'true'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || needs.decide.outputs.shorebird == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

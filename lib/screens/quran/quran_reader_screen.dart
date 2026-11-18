@@ -7,7 +7,30 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/quran_service.dart';
 import '../../core/services/quran_audio.dart';
 
+
 const String _basmala = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+
+// Some API responses include the opening Basmala in the first ayah text.
+// Remove it from the *display only* and only when all four words match;
+// the QuranService cache always retains the untouched API text.
+String _displayAyahText(String text) {
+  final words = text.trimLeft().split(RegExp(r'\s+'));
+  if (words.length < 4) return text;
+  String normalize(String value) => value
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED]'), '')
+      .replaceAll('ٱ', 'ا')
+      .replaceAll('أ', 'ا')
+      .replaceAll('إ', 'ا')
+      .replaceAll('آ', 'ا');
+  const expected = ['بسم', 'الله', 'الرحمن', 'الرحيم'];
+  final actual = words.take(4).map(normalize).toList();
+  if (actual.length != expected.length) return text;
+  for (var i = 0; i < expected.length; i++) {
+    if (actual[i] != expected[i]) return text;
+  }
+  return words.skip(4).join(' ');
+}
+
 
 String toArabicDigits(int n) {
   const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -208,7 +231,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                 (_audio.isPlaying || _audio.isLoading);
             spans.add(
               TextSpan(
-                text: '${a.text} ',
+                text: '${number != 1 && number != 9 && a.number == 1 ? _displayAyahText(a.text) : a.text} ',
                 style: isCurrent
                     ? textStyle.copyWith(
                         backgroundColor: AppColors.primary.withOpacity(0.15),
