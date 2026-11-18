@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -61,18 +62,22 @@ class QuranAudioController extends ChangeNotifier {
 
   static Map<String, String>? _resolvedEditions;
   static Map<int, String>? _surahNames;
+  late final StreamSubscription<int?> _indexSubscription;
+  late final StreamSubscription<PlayerState> _stateSubscription;
+  int _requestId = 0;
+  bool _advancing = false;
 
   QuranAudioController._() {
-    _player.currentIndexStream.listen((i) {
+    _indexSubscription = _player.currentIndexStream.listen((i) {
       if (i == null || _surah == null) return;
       _currentAyah = _firstAyah + i;
       notifyListeners();
     });
-    _player.playerStateStream.listen((s) {
+    _stateSubscription = _player.playerStateStream.listen((s) {
       _playing = s.playing;
       _loading = s.processingState == ProcessingState.loading ||
           s.processingState == ProcessingState.buffering;
-      if (s.processingState == ProcessingState.completed) {
+      if (s.processingState == ProcessingState.completed && !_advancing) {
         _onSurahCompleted();
       }
       notifyListeners();
@@ -93,13 +98,18 @@ class QuranAudioController extends ChangeNotifier {
   /// to the next surah automatically (112 → الناس), matching how a music
   /// app flips to the next track at the end of an album. Playback simply
   /// stops after سورة الناس (114), the last surah.
-  void _onSurahCompleted() {
+  Future<void> _onSurahCompleted() async {
+    if (_advancing) return;
+    _advancing = true;
     final surah = _surah;
     _currentAyah = null;
     _playing = false;
-    if (surah != null && surah < 114) {
-      // Fire-and-forget: playFrom reports its own errors via `_error`.
-      playFrom(surah + 1, 1);
+    try {
+      if (surah != null && surah < 114) {
+        await playFrom(surah + 1, 1);
+      }
+    } finally {
+      _advancing = false;
     }
   }
 
@@ -126,7 +136,7 @@ class QuranAudioController extends ChangeNotifier {
   }
 
   Future<void> setReciter(int index) async {
-    if (index == _reciterIndex) return;
+    if (index < 0 || index >= quranReciters.length || index == _reciterIndex) return;
     _reciterIndex = index;
     notifyListeners();
     try {
@@ -162,7 +172,9 @@ class QuranAudioController extends ChangeNotifier {
         .get(Uri.parse(
             'https://api.alquran.cloud/v1/edition?format=audio&language=ar&type=versebyverse'))
         .timeout(const Duration(seconds: 10));
-    final data = jsonDecode(res.body)['data'] as List<dynamic>;
+    if (res.statusCode != 200) throw Exception('Edition API HTTP ${res.statusCode}');
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = decoded['data'] as List<dynamic>;
     final out = <String, String>{};
     for (final e in data) {
       out[e['identifier'] as String] = '${e['englishName']}';
@@ -183,13 +195,26 @@ class QuranAudioController extends ChangeNotifier {
   /// [_onSurahCompleted]), exactly like flipping to the next track in a
   /// music player once the current one ends.
   Future<void> playFrom(int surah, int ayah) async {
-    _error = null;
+    if (surah < 1 || surah > _ayahCounts.length) {
+      _error = 'رقم السورة غير صحيح.';
+      notifyListeners();
+      return;
+    }
     final total = _ayahCounts[surah - 1];
-    final start = ayah.clamp(1, total);
+    if (ayah < 1 || ayah > total) {
+      _error = 'رقم الآية غير صحيح.';
+      notifyListeners();
+      return;
+    }
+    final requestId = ++_requestId;
+    _error = null;
+    final start = ayah;
     try {
       final r = reciter;
       final edition = await _editionFor(r);
+      if (requestId != _requestId) return;
       final name = await _surahName(surah);
+      if (requestId != _requestId) return;
       final sources = <AudioSource>[
         for (var a = start; a <= total; a++)
           AudioSource.uri(
@@ -203,14 +228,17 @@ class QuranAudioController extends ChangeNotifier {
             ),
           ),
       ];
+      if (requestId != _requestId) return;
       _surah = surah;
       _firstAyah = start;
       _currentAyah = start;
       _loading = true;
       notifyListeners();
       await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
+      if (requestId != _requestId) return;
       await _player.play();
     } catch (e) {
+      if (requestId != _requestId) return;
       debugPrint('Quran audio error: $e');
       _error = 'تعذّر تشغيل الصوت. تأكد من الاتصال بالإنترنت وحاول مرة أخرى.';
       _loading = false;
@@ -238,6 +266,7 @@ class QuranAudioController extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    ++_requestId;
     await _player.stop();
     _currentAyah = null;
     _playing = false;
@@ -250,6 +279,9 @@ class QuranAudioController extends ChangeNotifier {
 
   @override
   void dispose() {
+    ++_requestId;
+    _indexSubscription.cancel();
+    _stateSubscription.cancel();
     _player.dispose();
     super.dispose();
   }
