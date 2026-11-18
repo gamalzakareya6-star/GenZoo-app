@@ -4,7 +4,6 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'quran_service.dart';
 
 /// A reciter available from the free Islamic Network audio CDN
 /// (https://alquran.cloud/cdn). Files are one mp3 per ayah.
@@ -48,7 +47,6 @@ class QuranAudioController extends ChangeNotifier {
   static final QuranAudioController instance = QuranAudioController._();
 
   final AudioPlayer _player = AudioPlayer();
-  final QuranService _service = QuranService();
   int _reciterIndex = 0;
   int? _surah;
   int _firstAyah = 1; // ayah number of playlist item 0
@@ -57,7 +55,6 @@ class QuranAudioController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
 
-  static Map<int, String>? _surahNames;
   late final StreamSubscription<int?> _indexSubscription;
   late final StreamSubscription<PlayerState> _stateSubscription;
   int _requestId = 0;
@@ -114,11 +111,7 @@ class QuranAudioController extends ChangeNotifier {
     }
   }
 
-  Future<String> _surahName(int surah) async {
-    // Audio playback must not wait for the Quran text API just to obtain
-    // notification metadata. The player can use a local fallback title.
-    return _surahNames?[surah] ?? 'سورة $surah';
-  }
+  String _surahName(int surah) => 'سورة $surah';
 
   Future<void> _loadReciter() async {
     try {
