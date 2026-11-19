@@ -114,13 +114,24 @@ class _QiblaScreenState extends State<QiblaScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: _buildBody(theme),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Scale the compass with the available width so it stays
+              // proportioned on small phones and large tablets alike,
+              // instead of a single fixed size for every screen.
+              final side = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth.clamp(0, 520).toDouble()
+                  : 280.0;
+              final compassSize = (side * 0.62).clamp(220.0, 340.0);
+              return _buildBody(theme, compassSize);
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBody(ThemeData theme) {
+  Widget _buildBody(ThemeData theme, double compassSize) {
     if (_loading) {
       return const Column(
         mainAxisSize: MainAxisSize.min,
@@ -182,8 +193,8 @@ class _QiblaScreenState extends State<QiblaScreen> {
         ),
         const SizedBox(height: 24),
         SizedBox(
-          width: 280,
-          height: 280,
+          width: compassSize,
+          height: compassSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -199,21 +210,22 @@ class _QiblaScreenState extends State<QiblaScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 14),
-                    Icon(Icons.navigation_rounded, size: 96, color: color),
+                    SizedBox(height: compassSize * 0.05),
+                    Icon(Icons.navigation_rounded,
+                        size: compassSize * 0.34, color: color),
                     const Spacer(),
                   ],
                 ),
               ),
               Container(
-                width: 56,
-                height: 56,
+                width: compassSize * 0.2,
+                height: compassSize * 0.2,
                 decoration: const BoxDecoration(
                   color: Colors.black87,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
-                  child: Text('🕋', style: TextStyle(fontSize: 28)),
+                child: Center(
+                  child: Text('🕋', style: TextStyle(fontSize: compassSize * 0.1)),
                 ),
               ),
             ],
