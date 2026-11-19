@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_model.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/notification_service.dart';
 
 class UserAuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -29,6 +30,11 @@ class UserAuthProvider extends ChangeNotifier {
   bool get isAdmin => _user?.role == UserRole.admin || _user?.role == UserRole.superAdmin;
   bool get isSuperAdmin => _user?.role == UserRole.superAdmin;
 
+  void _syncAdminNotifications(AppUser? profile) {
+    final admin = profile?.role == UserRole.admin || profile?.role == UserRole.superAdmin;
+    unawaited(NotificationService.syncAdminTopic(admin));
+  }
+
   UserAuthProvider() {
     _authSubscription =
         _authService.authStateChanges.listen((firebaseUser) async {
@@ -36,6 +42,7 @@ class UserAuthProvider extends ChangeNotifier {
         // A guest has no Firebase account: do not drop the guest session.
         if (_user?.role == UserRole.guest) return;
         _user = null;
+        _syncAdminNotifications(null);
         notifyListeners();
         return;
       }
@@ -45,6 +52,7 @@ class UserAuthProvider extends ChangeNotifier {
 
       if (profile != null) {
         _user = profile;
+        _syncAdminNotifications(profile);
         notifyListeners();
         _rememberSignedIn(profile);
         return;
@@ -54,6 +62,7 @@ class UserAuthProvider extends ChangeNotifier {
       // still signed in, so keep the session instead of showing the login
       // screen, and retry loading the profile in the background.
       _user = _fallbackUser(firebaseUser);
+      _syncAdminNotifications(_user);
       notifyListeners();
       _retryProfileLoad(firebaseUser.uid);
     });
@@ -209,7 +218,9 @@ class UserAuthProvider extends ChangeNotifier {
       final profile = await _authService.getUserProfile(uid);
       if (profile != null) {
         _user = profile;
+        _syncAdminNotifications(profile);
         notifyListeners();
+        _rememberSignedIn(profile);
         return;
       }
     }
@@ -221,6 +232,7 @@ class UserAuthProvider extends ChangeNotifier {
     final u = _authService.currentUser;
     if (u != null && _user == null) {
       _user = _fallbackUser(u);
+      _syncAdminNotifications(_user);
       notifyListeners();
       _retryProfileLoad(u.uid);
     }
@@ -365,6 +377,7 @@ class UserAuthProvider extends ChangeNotifier {
   // الدخول كضيف
   void loginAsGuest() {
     _user = AppUser.guestUser();
+    _syncAdminNotifications(_user);
     _setError(null);
     notifyListeners();
     SharedPreferences.getInstance().then((p) => p.setBool(_kGuest, true)).catchError((_) => false);
@@ -443,6 +456,7 @@ class UserAuthProvider extends ChangeNotifier {
       await _authService.signOut();
       await _clearCreds();
       _user = null;
+      _syncAdminNotifications(null);
       _cachedProfile = null;
       _sessionLost = false;
       try {
