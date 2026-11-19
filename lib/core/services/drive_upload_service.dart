@@ -110,7 +110,10 @@ class DriveUploadService {
       final response = await dio.post<String>(
         endpoint,
         data: payload,
-        options: Options(headers: {'Content-Type': 'text/plain;charset=utf-8'}),
+        options: Options(headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+          'Accept': 'application/json',
+        }),
         onSendProgress: (sent, total) {
           if (total > 0) onProgress?.call(sent, total);
         },
@@ -118,8 +121,28 @@ class DriveUploadService {
       if (response.statusCode != 200) {
         throw UploadException('فشل الرفع (رمز ${response.statusCode}).');
       }
-      final raw = response.data ?? '';
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final raw = (response.data ?? '').trim();
+      if (raw.isEmpty) {
+        throw UploadException('خدمة Google Drive لم تُرجع أي بيانات. تأكد من رابط Apps Script وإعادة نشره.');
+      }
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(raw);
+      } on FormatException {
+        final looksLikeHtml = raw.startsWith('<') ||
+            raw.toLowerCase().contains('<!doctype html');
+        if (looksLikeHtml) {
+          throw UploadException(
+            'وصلت صفحة ويب بدل نتيجة الرفع. غالبًا رابط Google Apps Script قديم أو صلاحية النشر ليست Anyone. أعد نشره كـ Web App ثم حدّث الرابط في لوحة الإدارة.',
+          );
+        }
+        throw UploadException('استجابة Google Drive غير مفهومة. أعد المحاولة، وإذا تكرر الخطأ أرسل رسالة الخطأ للمسؤول.');
+      }
+      if (decoded is! Map<String, dynamic>) {
+        throw UploadException('استجابة Google Drive غير صالحة.');
+      }
+      final json = decoded;
       if (json['ok'] != true) {
         final err = '${json['error']}';
         if (err.contains('unauthorized')) throw UploadException('تعذر التحقق من حسابك، سجّل الدخول من جديد.');
@@ -135,9 +158,17 @@ class DriveUploadService {
     } on UploadException {
       rethrow;
     } on DioException catch (e) {
-      throw UploadException(e.type == DioExceptionType.sendTimeout
-          ? 'انتهت مهلة رفع الملف. جرّب اتصالًا أسرع أو أعد المحاولة.'
-          : 'تعذر الاتصال بخدمة Google Drive: ${e.message ?? 'خطأ غير معروف'}');
+      final status = e.response?.statusCode;
+      if (status == 413) {
+        throw UploadException('خدمة الرفع رفضت حجم الطلب بعد تحويل الملف. جرّب ملفًا أصغر.');
+      }
+      if (status == 401 || status == 403) {
+        throw UploadException('خدمة Google Drive رفضت الطلب. تأكد أن نشر Apps Script يسمح بالوصول Anyone.');
+      }
+      if (e.type == DioExceptionType.sendTimeout) {
+        throw UploadException('انتهت مهلة رفع الملف. جرّب اتصالًا أسرع أو أعد المحاولة.');
+      }
+      throw UploadException('تعذر الاتصال بخدمة Google Drive: ${e.message ?? 'خطأ غير معروف'}');
     } catch (e) {
       throw UploadException('تعذر الرفع، تأكد من الاتصال بالإنترنت ($e).');
     }
