@@ -72,6 +72,7 @@ class OpinionService {
       'opinion': opinion.trim(),
       'advice': advice.trim(),
       'status': 'pending',
+      'adminNotified': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
