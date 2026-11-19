@@ -90,12 +90,13 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, updateDialog) => PopScope(
-            canPop: false,
-            child: AlertDialog(
-              title: const Text('جارٍ رفع الملف إلى Google Drive'),
-              content: Column(
+        builder: (dialogContext) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('جارٍ رفع الملف إلى Google Drive'),
+            content: ValueListenableBuilder<int>(
+              valueListenable: progressNotifier,
+              builder: (context, value, child) => Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -187,6 +188,12 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
   }
 
   final ValueNotifier<int> progressNotifier = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    progressNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
