@@ -28,11 +28,13 @@ class NotificationService {
 
   static bool _initialized = false;
   static bool? _adminSubscribed;
+  static bool? _desiredAdminStatus;
 
   /// Admins (and super-admins) get push alerts for things needing their
   /// review, such as a new file-upload request. Called whenever the signed-in
   /// user's admin status is known or changes.
   static Future<void> syncAdminTopic(bool isAdmin) async {
+    _desiredAdminStatus = isAdmin;
     if (_adminSubscribed == isAdmin) return;
     try {
       if (isAdmin) {
@@ -42,6 +44,7 @@ class NotificationService {
       }
       _adminSubscribed = isAdmin;
     } catch (e) {
+      // Keep the desired status so init() can retry after FCM is initialized.
       debugPrint('Admin topic sync failed: $e');
     }
   }
@@ -65,6 +68,11 @@ class NotificationService {
 
       // Subscribe this device to the news topic.
       await messaging.subscribeToTopic(newsTopic);
+
+      // Apply the role determined by the authentication provider. This also
+      // retries a subscription that may have happened before FCM init.
+      final adminStatus = _desiredAdminStatus;
+      if (adminStatus != null) await syncAdminTopic(adminStatus);
 
       // Handle notifications while the app is open.
       FirebaseMessaging.onMessage.listen(
