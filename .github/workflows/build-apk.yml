@@ -126,6 +126,23 @@ jobs:
           keytool -list -v -keystore android/app/release.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep -E "SHA1:|SHA256:"
           echo "::endgroup::"
 
+      # Ensure plugin dependencies from Flutter's included Gradle build can
+      # resolve from Maven Central as well as the Gradle Plugin Portal.
+      - name: Configure Gradle plugin repositories
+        if: needs.decide.outputs.shorebird == 'true'
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/plugin-repositories.gradle" <<'EOF'
+gradle.beforeSettings { settings ->
+    settings.pluginManagement.repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+EOF
+
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
       - name: Build APK
