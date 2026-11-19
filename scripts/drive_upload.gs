@@ -22,7 +22,7 @@
 var FOLDER_ID = 'PUT_YOUR_DRIVE_FOLDER_ID_HERE';
 // Public Firebase web API key of the app (it is already inside the APK).
 var FIREBASE_API_KEY = 'AIzaSyCyItoPA7NaBYck4-tdTMWvIvj6TIe8eG0';
-var MAX_BYTES = 15 * 1024 * 1024; // 15 MB per file
+var MAX_BYTES = 30 * 1024 * 1024; // 30 MB per file (request size grows after Base64 encoding)
 // Lets the Telegram bot (GitHub Actions) save files without a Firebase login.
 // Put the same long random text here and in the GitHub secret
 // GENZOO_UPLOAD_SECRET. Leave the placeholder to disable this path.
@@ -42,7 +42,7 @@ function doPost(e) {
 
     var bytes = Utilities.base64Decode(body.data || '');
     if (!bytes.length) return json_({ ok: false, error: 'empty file' });
-    if (bytes.length > MAX_BYTES) return json_({ ok: false, error: 'file too large' });
+    if (bytes.length > MAX_BYTES) return json_({ ok: false, error: 'file too large (30 MB limit)' });
 
     var name = String(body.name || 'file').replace(/[\\\/:*?"<>|]/g, '_').slice(0, 120);
     var blob = Utilities.newBlob(bytes, body.mimeType || 'application/octet-stream', name);
