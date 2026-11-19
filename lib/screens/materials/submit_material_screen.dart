@@ -27,12 +27,14 @@ class _SubmitMaterialScreenState extends State<SubmitMaterialScreen> {
   String _type = AppConstants.materialTypes.first;
   PlatformFile? _file;
   bool _busy = false;
+  final ValueNotifier<int> _progressNotifier = ValueNotifier<int>(0);
 
   @override
   void dispose() {
     _title.dispose();
     _subject.dispose();
     _desc.dispose();
+    _progressNotifier.dispose();
     super.dispose();
   }
 
@@ -41,7 +43,7 @@ class _SubmitMaterialScreenState extends State<SubmitMaterialScreen> {
     if (result == null || result.files.isEmpty) return;
     final f = result.files.first;
     if (f.size > DriveUploadService.maxBytes) {
-      _snack('حجم الملف أكبر من 15 ميجابايت.', error: true);
+      _snack('الحد الأقصى لحجم الملف 30 ميجابايت.', error: true);
       return;
     }
     setState(() {
@@ -74,8 +76,67 @@ class _SubmitMaterialScreenState extends State<SubmitMaterialScreen> {
     }
 
     setState(() => _busy = true);
+    var sentBytes = 0;
+    var totalBytes = 0;
+    var eta = 'جارٍ تجهيز الملف...';
+    final stopwatch = Stopwatch()..start();
+    bool dialogOpen = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('جارٍ رفع مساهمتك إلى Google Drive'),
+          content: ValueListenableBuilder<int>(
+            valueListenable: _progressNotifier,
+            builder: (context, value, child) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LinearProgressIndicator(value: totalBytes > 0 ? sentBytes / totalBytes : null),
+                const SizedBox(height: 14),
+                Text(totalBytes > 0 ? '${(sentBytes / totalBytes * 100).clamp(0, 100).toStringAsFixed(0)}%' : 'جارٍ بدء الرفع'),
+                const SizedBox(height: 6),
+                Text('تم إرسال ${(sentBytes / (1024 * 1024)).toStringAsFixed(1)} من ${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB',
+                    style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 6),
+                Text('الوقت المتبقي: $eta', style: const TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                const Text('يرجى إبقاء التطبيق مفتوحًا حتى اكتمال الرفع.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
     try {
-      final uploaded = await DriveUploadService.upload(file.path!, displayName: file.name);
+      final uploaded = await DriveUploadService.upload(
+        file.path!,
+        displayName: file.name,
+        onProgress: (sent, total) {
+          sentBytes = sent;
+          totalBytes = total;
+          if (sent > 0 && total > sent) {
+            final seconds = stopwatch.elapsedMilliseconds / 1000;
+            final speed = seconds > 0 ? sent / seconds : 0.0;
+            if (speed > 0) {
+              final remaining = ((total - sent) / speed).round();
+              eta = remaining >= 60
+                  ? 'حوالي ${remaining ~/ 60} دقيقة و${remaining % 60} ثانية'
+                  : 'حوالي $remaining ثانية';
+            }
+          } else if (sent >= total && total > 0) {
+            eta = 'اكتمل الإرسال، جارٍ حفظ الملف';
+          }
+          _progressNotifier.value = sent;
+        },
+      );
+      if (dialogOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        dialogOpen = false;
+      }
       await SubmissionService.submit(
         uid: user.uid,
         submitterName: user.displayName,
@@ -95,6 +156,10 @@ class _SubmitMaterialScreenState extends State<SubmitMaterialScreen> {
         backgroundColor: Colors.green,
       ));
     } catch (e) {
+      if (dialogOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        dialogOpen = false;
+      }
       if (mounted) {
         setState(() => _busy = false);
         _snack('$e', error: true);
@@ -125,7 +190,7 @@ class _SubmitMaterialScreenState extends State<SubmitMaterialScreen> {
                     ),
                     child: const Text(
                       'ارفع ملف مفيد لزملائك (محاضرة، ملخص، امتحان سابق...). يراجعه المسؤول، '
-                      'وبعد الموافقة يظهر في المواد باسمك. الحد الأقصى 15 ميجابايت.',
+                      'وبعد الموافقة يظهر في المواد باسمك. الحد الأقصى 30 ميجابايت.',
                       style: TextStyle(fontSize: 12.5, height: 1.5),
                     ),
                   ),
