@@ -102,12 +102,16 @@ class DriveUploadService {
       connectTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(minutes: 5),
       receiveTimeout: const Duration(minutes: 2),
-      followRedirects: true,
-      maxRedirects: 5,
+      // Apps Script ContentService responds to POST with HTTP 302 and a
+      // one-time script.googleusercontent.com URL. Handle that redirect
+      // explicitly because some Android/Dio combinations reject 302.
+      followRedirects: false,
+      maxRedirects: 0,
       responseType: ResponseType.plain,
+      validateStatus: (status) => status != null && status >= 200 && status < 400,
     ));
     try {
-      final response = await dio.post<String>(
+      var response = await dio.post<String>(
         endpoint,
         data: payload,
         options: Options(headers: {
@@ -118,6 +122,36 @@ class DriveUploadService {
           if (total > 0) onProgress?.call(sent, total);
         },
       );
+
+      // Google Apps Script ContentService redirects its POST response to
+      // script.googleusercontent.com. Fetch that one-time URL with GET.
+      // Never follow an arbitrary host from a redirect response.
+      for (var redirectCount = 0;
+          response.statusCode == 302 && redirectCount < 3;
+          redirectCount++) {
+        final location = response.headers.value('location');
+        if (location == null || location.trim().isEmpty) {
+          throw UploadException(
+            'Google Apps Script أعاد تحويلًا (302) بدون رابط الوجهة. '
+            'تأكد من نشر Web App بشكل صحيح.',
+          );
+        }
+        final redirectUri = Uri.parse(endpoint).resolve(location.trim());
+        final host = redirectUri.host.toLowerCase();
+        if (redirectUri.scheme != 'https' ||
+            !(host == 'googleusercontent.com' ||
+                host.endsWith('.googleusercontent.com'))) {
+          throw UploadException(
+            'رابط التحويل الذي أعادته Google غير موثوق. '
+            'راجع رابط Web App المحفوظ في إعدادات الرفع.',
+          );
+        }
+        response = await dio.getUri<String>(
+          redirectUri,
+          options: Options(headers: {'Accept': 'application/json'}),
+        );
+      }
+
       if (response.statusCode != 200) {
         throw UploadException('فشل الرفع (رمز ${response.statusCode}).');
       }
