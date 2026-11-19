@@ -35,6 +35,7 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
     _titleController.dispose();
     _subjectController.dispose();
     _descController.dispose();
+    progressNotifier.dispose();
     super.dispose();
   }
 
@@ -188,12 +189,6 @@ class _UploadMaterialScreenState extends State<UploadMaterialScreen> {
   }
 
   final ValueNotifier<int> progressNotifier = ValueNotifier<int>(0);
-
-  @override
-  void dispose() {
-    progressNotifier.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
