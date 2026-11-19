@@ -61,6 +61,7 @@ class ReviewService {
       'tips': tips.trim(),
       'difficulty': difficulty,
       'status': 'pending',
+      'adminNotified': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
