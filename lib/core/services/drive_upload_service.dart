@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 /// A file saved in Google Drive.
 class UploadedFile {
@@ -33,7 +33,7 @@ class UploadException implements Exception {
 /// scripts/drive_upload.gs. The web app URL is stored in Firestore
 /// (config/upload) so the admin can set or change it without a new build.
 class DriveUploadService {
-  static const int maxBytes = 15 * 1024 * 1024;
+  static const int maxBytes = 30 * 1024 * 1024;
 
   static const Map<String, String> _mime = {
     'pdf': 'application/pdf',
@@ -72,7 +72,7 @@ class DriveUploadService {
         .set({'url': url.trim(), 'updatedAt': FieldValue.serverTimestamp()});
   }
 
-  static Future<UploadedFile> upload(String path, {String? displayName}) async {
+  static Future<UploadedFile> upload(String path, {String? displayName, void Function(int sent, int total)? onProgress}) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw UploadException('سجّل الدخول أولاً لرفع الملفات.');
 
@@ -84,7 +84,7 @@ class DriveUploadService {
     final file = File(path);
     final bytes = await file.readAsBytes();
     if (bytes.length > maxBytes) {
-      throw UploadException('حجم الملف أكبر من 15 ميجابايت.');
+      throw UploadException('حجم الملف أكبر من 30 ميجابايت.');
     }
 
     final name = displayName ?? path.split(Platform.pathSeparator).last;
@@ -98,36 +98,35 @@ class DriveUploadService {
       'data': base64Encode(bytes),
     });
 
-    final client = http.Client();
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(minutes: 5),
+      receiveTimeout: const Duration(minutes: 2),
+      followRedirects: true,
+      maxRedirects: 5,
+      responseType: ResponseType.plain,
+    ));
     try {
-      var res = await client
-          .post(Uri.parse(endpoint),
-              headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: payload)
-          .timeout(const Duration(minutes: 3));
-
-      // Apps Script answers a POST with a redirect to the result.
-      var hops = 0;
-      while ((res.statusCode == 301 ||
-              res.statusCode == 302 ||
-              res.statusCode == 303 ||
-              res.statusCode == 307) &&
-          hops < 5) {
-        final location = res.headers['location'];
-        if (location == null) break;
-        res = await client.get(Uri.parse(location)).timeout(const Duration(minutes: 1));
-        hops++;
+      final response = await dio.post<String>(
+        endpoint,
+        data: payload,
+        options: Options(headers: {'Content-Type': 'text/plain;charset=utf-8'}),
+        onSendProgress: (sent, total) {
+          if (total > 0) onProgress?.call(sent, total);
+        },
+      );
+      if (response.statusCode != 200) {
+        throw UploadException('فشل الرفع (رمز ${response.statusCode}).');
       }
-
-      if (res.statusCode != 200) {
-        throw UploadException('فشل الرفع (رمز ${res.statusCode}).');
-      }
-      final json = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final raw = response.data ?? '';
+      final json = jsonDecode(raw) as Map<String, dynamic>;
       if (json['ok'] != true) {
         final err = '${json['error']}';
         if (err.contains('unauthorized')) throw UploadException('تعذر التحقق من حسابك، سجّل الدخول من جديد.');
         if (err.contains('too large')) throw UploadException('حجم الملف أكبر من المسموح.');
         throw UploadException('فشل الرفع: $err');
       }
+      onProgress?.call(payload.length, payload.length);
       return UploadedFile(
         name: json['name'] as String? ?? name,
         url: json['url'] as String,
@@ -135,10 +134,12 @@ class DriveUploadService {
       );
     } on UploadException {
       rethrow;
+    } on DioException catch (e) {
+      throw UploadException(e.type == DioExceptionType.sendTimeout
+          ? 'انتهت مهلة رفع الملف. جرّب اتصالًا أسرع أو أعد المحاولة.'
+          : 'تعذر الاتصال بخدمة Google Drive: ${e.message ?? 'خطأ غير معروف'}');
     } catch (e) {
       throw UploadException('تعذر الرفع، تأكد من الاتصال بالإنترنت ($e).');
-    } finally {
-      client.close();
     }
   }
 }
