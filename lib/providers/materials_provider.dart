@@ -75,6 +75,8 @@ class MaterialsProvider extends ChangeNotifier {
     required String subject,
     required String materialType,
     required String uploaderName,
+    String? fileName,
+    int fileSizeBytes = 0,
   }) async {
     _isUploading = true;
     _uploadError = null;
@@ -89,9 +91,9 @@ class MaterialsProvider extends ChangeNotifier {
         subject: subject.trim(),
         materialType: materialType,
         fileUrl: fileUrl.trim(),
-        fileName: title.trim(),
+        fileName: fileName ?? title.trim(),
         fileExtension: fileExtension,
-        fileSizeBytes: 0,
+        fileSizeBytes: fileSizeBytes,
         uploadedBy: uploaderName,
         uploadedAt: DateTime.now(),
         downloadCount: 0,
