@@ -1,11 +1,7 @@
-"""Pushes an FCM alert to admins when a student submits a file for review.
+"""Pushes FCM alerts for new student contributions awaiting admin review.
 
-Run by .github/workflows/genzoo-notifications.yml, right after
-send_notifications.py. Every pending request in `material_submissions` that
-has not been flagged yet gets one push to the `admins` topic (devices signed
-in as an admin/super-admin subscribe to it from the app), then is marked
-`adminNotified: true` so it is not sent twice. If sending fails the flag
-stays false and the next run retries it.
+Only documents explicitly marked adminNotified=false are sent. The flag is
+updated after FCM accepts the message, so failed sends are retried next run.
 """
 import json
 import os
@@ -13,11 +9,32 @@ import sys
 
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
-from google.cloud.firestore_v1.base_query import FieldFilter
 
 PROJECT_ID = "genzoo-app"
 TOPIC = "admins"
-CHANNEL_ID = "genzoo_admin"  # created in MainActivity.kt
+CHANNEL_ID = "genzoo_admin"
+
+# collection, type, notification title, body builder
+PENDING_TYPES = (
+    (
+        "material_submissions",
+        "material_submission",
+        "طلب رفع ملف جديد",
+        lambda d: f"{d.get('submitterName') or 'طالب'} أرسل الملف: {d.get('title') or 'ملف جديد'}",
+    ),
+    (
+        "subject_opinions",
+        "subject_opinion",
+        "رأي جديد يحتاج مراجعة",
+        lambda d: f"{d.get('userName') or 'طالب'} أرسل رأيًا عن مادة: {d.get('subjectName') or 'مادة'}",
+    ),
+    (
+        "material_reviews",
+        "material_review",
+        "تقييم جديد يحتاج مراجعة",
+        lambda d: f"{d.get('userName') or 'طالب'} قيّم: {d.get('materialTitle') or 'مادة دراسية'}",
+    ),
+)
 
 
 def main() -> int:
@@ -34,46 +51,52 @@ def main() -> int:
     )
     db = firestore.client(app=app)
 
-    pending = list(
-        db.collection("material_submissions")
-        .where(filter=FieldFilter("status", "==", "pending"))
-        .where(filter=FieldFilter("adminNotified", "==", False))
-        .stream()
-    )
-    if not pending:
-        print("No new submissions awaiting admin review.")
-        return 0
-
     failures = 0
-    for doc in pending:
-        data = doc.to_dict() or {}
-        submitter = str(data.get("submitterName") or "طالب")
-        title = str(data.get("title") or "ملف جديد")
+    sent_count = 0
 
-        message = messaging.Message(
-            topic=TOPIC,
-            notification=messaging.Notification(
-                title="طلب رفع ملف جديد",
-                body=f"{submitter} يريد رفع: {title}",
-            ),
-            data={"submissionId": doc.id, "type": "material_submission"},
-            android=messaging.AndroidConfig(
-                priority="high",
-                ttl=24 * 60 * 60,
-                notification=messaging.AndroidNotification(channel_id=CHANNEL_ID, priority="high"),
-            ),
-        )
-        try:
-            message_id = messaging.send(message, app=app)
-        except Exception as exc:  # leave adminNotified=false so the next run retries
-            failures += 1
-            print(f"FAILED submission {doc.id}: {exc}")
-            continue
+    for collection_name, notification_type, title, body_builder in PENDING_TYPES:
+        # Filter adminNotified locally to avoid requiring a composite index.
+        pending_docs = db.collection(collection_name).where("status", "==", "pending").stream()
 
-        doc.reference.update({"adminNotified": True})
-        print(f"Notified admins for submission {doc.id} (FCM {message_id})")
+        for doc in pending_docs:
+            data = doc.to_dict() or {}
+            if data.get("adminNotified") is not False:
+                continue
 
-    print(f"Processed {len(pending)} submission(s), {failures} failure(s).")
+            message = messaging.Message(
+                topic=TOPIC,
+                notification=messaging.Notification(
+                    title=title,
+                    body=body_builder(data)[:180],
+                ),
+                data={
+                    "documentId": doc.id,
+                    "collection": collection_name,
+                    "type": notification_type,
+                },
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    ttl=24 * 60 * 60,
+                    notification=messaging.AndroidNotification(
+                        channel_id=CHANNEL_ID,
+                        priority="high",
+                    ),
+                ),
+            )
+
+            try:
+                message_id = messaging.send(message, app=app)
+                doc.reference.update({"adminNotified": True})
+                sent_count += 1
+                print(
+                    f"Notified admins: {collection_name}/{doc.id} "
+                    f"(FCM {message_id})"
+                )
+            except Exception as exc:
+                failures += 1
+                print(f"FAILED {collection_name}/{doc.id}: {exc}")
+
+    print(f"Sent {sent_count} admin notification(s); {failures} failure(s).")
     return 1 if failures else 0
 
 
