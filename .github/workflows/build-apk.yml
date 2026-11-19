@@ -134,14 +134,14 @@ jobs:
         run: |
           mkdir -p "$HOME/.gradle/init.d"
           cat > "$HOME/.gradle/init.d/plugin-repositories.gradle" <<'EOF'
-gradle.beforeSettings { settings ->
-    settings.pluginManagement.repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-EOF
+          gradle.beforeSettings { settings ->
+              settings.pluginManagement.repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          EOF
 
       # The build number (Android versionCode) grows with every run, so each
       # new APK installs as an update over the previous one.
