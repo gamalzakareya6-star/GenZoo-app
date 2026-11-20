@@ -110,6 +110,15 @@ class _GpaCalculatorScreenState extends State<GpaCalculatorScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                if (gpa.courses.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Text(
+                      'اضغط "إضافة مقرر" عشان تبدأ حساب معدلك.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: theme.hintColor, fontSize: 13),
+                    ),
+                  ),
                 for (final course in gpa.courses)
                   _CourseCard(
                     key: ValueKey('${course.id}-${gpa.dataVersion}'),
