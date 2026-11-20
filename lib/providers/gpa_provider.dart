@@ -65,9 +65,9 @@ class GpaProvider extends ChangeNotifier {
   }
 
   void _resetState() {
-    _courses
-      ..clear()
-      ..add(_newCourse());
+    // Start with no rows: the student taps "إضافة مقرر" to add the first
+    // one, instead of always seeing a pre-filled row with a default grade.
+    _courses.clear();
     _summer = false;
     _prevGpa = null;
     _prevPercent = null;
@@ -108,7 +108,7 @@ class GpaProvider extends ChangeNotifier {
         .toList();
     _courses
       ..clear()
-      ..addAll(list.isEmpty ? [_newCourse()] : list);
+      ..addAll(list);
     _summer = data['summer'] as bool? ?? false;
     _prevGpa = (data['prevGpa'] as num?)?.toDouble();
     _prevPercent = (data['prevPercent'] as num?)?.toDouble();
@@ -213,7 +213,6 @@ class GpaProvider extends ChangeNotifier {
 
   void removeCourse(String id) {
     _courses.removeWhere((c) => c.id == id);
-    if (_courses.isEmpty) _courses.add(_newCourse());
     _dataVersion++;
     _changed();
   }
